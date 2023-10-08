@@ -1,0 +1,188 @@
+/* Общие стили */
+*, body {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Roboto Mono", monospace, "PT Mono", "Courier New", "Courier", "Helvetica Neue", Arial;
+}
+
+/* Стили игрового поля */
+#board {
+    width: 100vw;
+    display: grid;
+    grid-template-columns: repeat(150, 4vw);
+}
+
+.cell {
+    height: 4vw;
+    border: 1px solid #cfcfcf;
+}
+
+.cell:hover {
+    background-color: #f0f0f0;
+}
+
+.cell.taken {
+    background-color: #333;
+    border: 1px solid #404040;
+}
+
+/* Стили координат */
+.highlighted-coordinate {
+    font-weight: bold;
+    color: black;
+}
+
+#vertical-coordinates, #horizontal-coordinates {
+    display: flex;
+    justify-content: flex-start;
+    color: grey;
+    font-size: 14px;
+}
+
+#vertical-coordinates {
+    position: sticky;
+    left: 0;
+    flex-direction: column;
+    height: calc(150 * 4vw);
+    width: 3vw;
+    margin-right: 1vw;
+    align-items: center;
+    background: #ffffffc9;
+}
+
+#horizontal-coordinates {
+    position: sticky;
+    top: 0;
+    width: calc(150 * 4vw);
+    height: 4vw;
+    margin-bottom: 1vw;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4vw;
+    background: #ffffffc9;
+}
+
+/* Стили кнопок */
+.buttons-container {
+    display: flex;
+    justify-content: right;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 10px;
+    z-index: 1000;
+    height: 60px;
+}
+
+.custom-button {
+    background-color: white;
+    color: black;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 25px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    margin: 0 10px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    font-size: 18px;
+}
+
+.custom-button:hover {
+    transform: translateY(-3px);
+}
+
+.custom-button:active {
+    transform: translateY(1px);
+}
+
+/* Стили анимаций */
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Дополнительные стили контейнеров */
+.outer-container {
+    overflow-y: auto;
+    height: 100vh;
+}
+
+#horizontal-coordinates-container {
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+#horizontal-coordinates div {
+    min-width: calc(2 * (100vw / 150));
+    overflow: hidden;
+}
+
+.board-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    width: calc((4vw * 150) + 3vw);
+}
+
+#board-container {
+    display: flex;
+    flex-direction: column;  
+    align-items: flex-start;
+    min-height: calc(150 * 4vw + 4vw + 1vw);
+}
+
+/* Медиа-запрос для мобильных устройств */
+@media screen and (max-width: 768px) {
+    #vertical-coordinates, #horizontal-coordinates {
+        font-size:8px;
+    }
+
+    .custom-button {
+        font-size: 14px;
+    }
+
+    #board {
+        grid-template-columns: repeat(150, 6vw);
+    }
+
+    .cell {
+        height: 6vw;
+    }
+
+    #vertical-coordinates {
+        height: calc(150 * 6vw);
+        width: 4.5vw;
+    }
+
+    #horizontal-coordinates {
+        width: calc(150 * 6vw);
+        height: 6vw;
+      margin-left: 5vw;
+    }
+
+    .board-wrapper {
+        width: calc((6vw * 150) + 4.5vw);
+    }
+}
+
+/* Шторка  */
+.hidden {
+    display: none;
+}
+
+#taskPanel {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 200px;
+    background-color: rgba(0,0,0,0.7);
+    overflow-y: auto;
+}
+
+#taskCoordinates li {
+    padding: 10px;
+}

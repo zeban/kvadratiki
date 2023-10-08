@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+
+    <title>Клеткун 1.0</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+
+</head>
+<body>
+      
+ <div class="buttons-container">
+
+    <div class="2buttons"><button id="shareButton" class="custom-button">Поделиться</button>
+      <button id="drawingTaskButton">Рисование по заданию</button>
+    <a id="newGameButton" class="custom-button" target="_blank">Новая игра</a>
+
+    </div>
+    </div>
+</div>
+
+  <div class="outer-container">
+<div id="board-container">
+    <div id="horizontal-coordinates">
+        <!-- здесь буквы -->
+    </div>
+    <div class="board-wrapper">
+        <div id="vertical-coordinates">
+            <!-- здесь цифры -->
+        </div>
+        <div id="board">
+            <!-- здесь клетки -->
+        </div>
+    </div>
+</div>
+  </div>
+  
+<div id="taskPanel" class="hidden">
+    <ul id="taskCoordinates"></ul>
+</div>
+  
+    <script src="script.js"></script>
+</body>
+</html>
