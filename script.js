@@ -12,11 +12,25 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
+
+
+
+
 // === Настройки игры ===
 const cellsCount = 150; 
 const totalCells = cellsCount * cellsCount;
 let gameId = window.location.hash.split('/').pop();
 let isNewGame = !gameId || gameId === 'play';
+let isCompleted = false; // завершен ли рисунок
+function isDrawingJustCompleted() {
+    if (!isCompleted && isDrawingComplete()) {
+        isCompleted = true;
+        return true;
+    }
+    return false;
+}
+
+
 
 // Инициализация или получение ID пользователя
 let userId = localStorage.getItem('userId');
@@ -24,6 +38,17 @@ if (!userId) {
     userId = Date.now().toString();
     localStorage.setItem('userId', userId);
 }
+
+
+//слушател ьдля показа конфети другим
+// Теперь добавляем слушатель для Firebase
+database.ref('games/' + gameId + '/completionEvent').on('value', snapshot => {
+    const lastCompletionEvent = snapshot.val();
+    
+    if (lastCompletionEvent && (Date.now() - lastCompletionEvent.timestamp) <= 5 * 60 * 1000) {
+        celebrateCompletion(); // Это ваша функция для показа конфети или другого уведомления
+    }
+})
 
 // Функция для генерации координат
 function generateCoordinates(count) {
@@ -60,6 +85,8 @@ for (let i = 0; i < totalCells; i++) {
 }
 board.appendChild(fragment);
 
+
+
 // Добавление обработчиков событий для клеток
 const cells = board.querySelectorAll('.cell');
 cells.forEach(cell => {
@@ -78,6 +105,25 @@ cells.forEach(cell => {
     });
 });
 
+// Проверяем соответсвие клетки правилам в задании
+function updateTaskCoordinatesColor() {
+    const takenCells = document.querySelectorAll('.cell.taken');
+    const takenCoords = Array.from(takenCells).map(cell => cell.dataset.coord);
+    
+    taskCoordinates.childNodes.forEach(coordinateDiv => {
+        const coords = coordinateDiv.textContent.split('-');
+        const coordString = `${coords[0]}${coords[1]}`;
+
+        if (takenCoords.includes(coordString)) {
+            coordinateDiv.style.color = 'green';
+        } else {
+            coordinateDiv.style.color = 'black';
+        }
+    });
+}
+
+
+
 // Обработка кликов по доске
 board.addEventListener('click', function(e) {
     if (e.target.classList.contains('cell')) {
@@ -88,8 +134,52 @@ board.addEventListener('click', function(e) {
         } else {
             database.ref('games/' + gameId + '/cells/' + index).set(userId);
         }
+
+        if (isDrawingJustCompleted()) {
+            celebrateCompletion(); 
+            notifyCompletionToOthers(); 
+        }
+
+        checkTaskCompletion();
     }
 });
+
+
+
+//Отмечаем выполненные координаты
+function checkTaskCompletion() {
+   let allCoordsCompleted = true;
+   
+   currentTask.coordinates.forEach((coord, index) => {
+        const [letter, number] = splitCoordinate(coord);
+        const cellIndex = getCellIndex(letter, number);
+        const cell = board.querySelector(`[data-index="${cellIndex}"]`);
+        const coordElement = taskCoordinates.children[index];
+
+        if (coordElement) {
+            if (cell.classList.contains('taken')) {
+                coordElement.style.color = 'green'; 
+            } else {
+                coordElement.style.color = 'black';
+                allCoordsCompleted = false;
+            }
+        }
+    });
+    
+    return allCoordsCompleted;
+}
+
+
+function splitCoordinate(coord) {
+    const letter = coord.match(/[A-Z]+/)[0];
+    const number = parseInt(coord.match(/\d+/)[0], 10);
+    return [letter, number];
+}
+
+function getCellIndex(letter, number) {
+    const columnIndex = horizontalLabels.indexOf(letter);
+    return (number - 1) * cellsCount + columnIndex;
+}
 
 // Обработка обновлений клеток
 function handleCellUpdate(snapshot) {
@@ -103,16 +193,40 @@ function handleCellUpdate(snapshot) {
         cell.classList.remove('taken');
         delete cell.dataset.owner;
     }
+
 }
 
-database.ref('games/' + gameId + '/cells/').on('child_changed', handleCellUpdate);
-database.ref('games/' + gameId + '/cells/').on('child_added', handleCellUpdate);
-database.ref('games/' + gameId + '/cells/').on('child_removed', snapshot => {
+// слушатель конфетти для всех
+let lastCelebratedCompletion = 0;
+
+database.ref('games/' + gameId + '/completed').on('value', (snapshot) => {
+    const completionTime = snapshot.val();
+
+    if (completionTime && completionTime > lastCelebratedCompletion) {
+        celebrateCompletion();
+        lastCelebratedCompletion = completionTime;
+    }
+});
+
+database.ref('games/' + gameId + '/cells/').on('child_changed', (snapshot) => {
+    handleCellUpdate(snapshot);
+    checkAndCelebrateCompletion();
+});
+
+database.ref('games/' + gameId + '/cells/').on('child_added', (snapshot) => {
+    handleCellUpdate(snapshot);
+    checkAndCelebrateCompletion();
+});
+
+database.ref('games/' + gameId + '/cells/').on('child_removed', (snapshot) => {
     const cellIndex = snapshot.key;
     const cell = board.querySelector(`[data-index="${cellIndex}"]`);
     cell.classList.remove('taken');
     delete cell.dataset.owner;
+
+    checkAndCelebrateCompletion();
 });
+
 
 // Обработка кнопок "Поделиться" и "Новая игра"
 const shareButton = document.getElementById('shareButton');
@@ -147,24 +261,76 @@ newGameButton.addEventListener('click', function(e) {
     newGameButton.href = newGameUrl;
 });
 
-// РИСОВАНИЕ ПО ЗАДАНИЮ
+// З А Д А Н И Я
 
-const drawingTaskButton = document.getElementById('drawingTaskButton');
+// рисунок
+let currentTask = {
+    name: 'Маленькое Сердце',
+    coordinates: ['C2', 'D2', 'F2', 'G2', 'B3', 'C3', 'D3', 'E3', 'F3', 'G3', 'H3', 'B4', 'C4', 'D4', 'E4', 'F4', 'G4', 'H4', 'C5', 'D5', 'E5', 'F5', 'G5', 'D6', 'E6', 'F6']
+};
+
+
+
+// обработчик для этой кнопки-шторки:
+const taskButton = document.getElementById('taskButton');
 const taskPanel = document.getElementById('taskPanel');
-const taskCoordinatesList = document.getElementById('taskCoordinates');
+const taskCoordinates = document.getElementById('taskCoordinates');
 
-drawingTaskButton.addEventListener('click', function() {
-    // Здесь можно загрузить задание из базы данных
-    // Но пока что будем использовать простой массив координат:
-    const taskCoordinates = ["A1", "B2", "C3"]; 
-
-    taskCoordinatesList.innerHTML = "";
-    taskCoordinates.forEach(coord => {
-        const listItem = document.createElement('li');
-        listItem.innerText = coord;
-        listItem.dataset.coordinate = coord;
-        taskCoordinatesList.appendChild(listItem);
+taskButton.addEventListener('click', function() {
+    taskCoordinates.innerHTML = ''; 
+    currentTask.coordinates.forEach(coord => {
+        const coordElement = document.createElement('div');
+        coordElement.textContent = coord;
+        taskCoordinates.appendChild(coordElement);
     });
-
-    taskPanel.classList.remove('hidden');
+  
+      checkTaskCompletion();
+  
+    taskPanel.style.display = 'block'; // показываем панель
 });
+
+
+
+// закрыть шторку
+const closeTaskPanelButton = document.getElementById('closeTaskPanel');
+
+closeTaskPanelButton.addEventListener('click', function() {
+    taskPanel.style.display = 'none';
+});
+
+
+// Кофетти
+let lastCelebrationTime = 0;
+const CELEBRATION_INTERVAL = 10000; // 10 секунд
+
+function celebrateCompletion() {
+    const currentTime = Date.now();
+    if (currentTime - lastCelebrationTime > CELEBRATION_INTERVAL) {
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
+        lastCelebrationTime = currentTime;
+    }
+}
+
+
+// Проверка завершенности рисунка
+function isDrawingComplete() {
+    for (let coord of currentTask.coordinates) {
+        const [letter, number] = splitCoordinate(coord);
+        const cellIndex = getCellIndex(letter, number);
+        const cell = board.querySelector(`[data-index="${cellIndex}"]`);
+        
+        if (!cell.classList.contains('taken')) {
+            return false; // Если хоть одна координата не окрашена, рисунок не завершен
+        }
+    }
+    return true; // Если все координаты окрашены
+}
+
+//Конфетти у всех
+function notifyCompletionToOthers() {
+    database.ref('games/' + gameId + '/completed').set(Date.now());
+}
