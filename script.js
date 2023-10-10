@@ -23,12 +23,21 @@ let gameId = window.location.hash.split('/').pop();
 let isNewGame = !gameId || gameId === 'play';
 let isCompleted = false; // завершен ли рисунок
 function isDrawingJustCompleted() {
-    if (!isCompleted && isDrawingComplete()) {
-        isCompleted = true;
-        return true;
+  console.log("Checking if drawing just completed...");
+    if (isDrawingComplete()) { // если рисунок завершен
+     console.log("Drawing is complete...");
+        if (!isCompleted) { // и если он раньше не был завершен
+           console.log("...and it was not completed before.");
+            isCompleted = true; // устанавливаем флаг
+            return true; // и возвращаем true
+        }
+    } else { // если рисунок не завершен
+       console.log("Drawing is not complete.");
+        isCompleted = false; // сбрасываем флаг
     }
     return false;
 }
+
 
 
 
@@ -70,7 +79,7 @@ const verticalCoordinates = document.getElementById('vertical-coordinates');
 const horizontalCoordinates = document.getElementById('horizontal-coordinates');
 const horizontalLabels = generateCoordinates(cellsCount);
 for (let i = 0; i < cellsCount; i++) {
-    verticalCoordinates.innerHTML += `<div style="flex: 1; display: flex; align-items: center; justify-content: center">${i+1}</div>`;
+    verticalCoordinates.innerHTML += `<div style="flex: 1; display: flex; align-items: center; justify-content: center;">${i+1}</div>`;
     horizontalCoordinates.innerHTML += `<div style="flex: 1; display: flex; align-items: center; justify-content: center">${horizontalLabels[i]}</div>`;
 }
 
@@ -126,6 +135,7 @@ function updateTaskCoordinatesColor() {
 
 // Обработка кликов по доске
 board.addEventListener('click', function(e) {
+  if (!e.target.classList.contains('cell')) return;
     if (e.target.classList.contains('cell')) {
         const cell = e.target;
         const index = cell.dataset.index;
@@ -210,13 +220,18 @@ database.ref('games/' + gameId + '/completed').on('value', (snapshot) => {
 
 database.ref('games/' + gameId + '/cells/').on('child_changed', (snapshot) => {
     handleCellUpdate(snapshot);
-    checkAndCelebrateCompletion();
+    if (isDrawingJustCompleted()) {
+        celebrateCompletion();
+    }
 });
 
 database.ref('games/' + gameId + '/cells/').on('child_added', (snapshot) => {
     handleCellUpdate(snapshot);
-    checkAndCelebrateCompletion();
+    if (isDrawingJustCompleted()) {
+        celebrateCompletion();
+    }
 });
+
 
 database.ref('games/' + gameId + '/cells/').on('child_removed', (snapshot) => {
     const cellIndex = snapshot.key;
@@ -224,7 +239,9 @@ database.ref('games/' + gameId + '/cells/').on('child_removed', (snapshot) => {
     cell.classList.remove('taken');
     delete cell.dataset.owner;
 
-    checkAndCelebrateCompletion();
+    if (isDrawingJustCompleted()) {
+        celebrateCompletion();
+    }
 });
 
 
@@ -304,6 +321,7 @@ let lastCelebrationTime = 0;
 const CELEBRATION_INTERVAL = 10000; // 10 секунд
 
 function celebrateCompletion() {
+  console.log("Checking if it's time to celebrate...");
     const currentTime = Date.now();
     if (currentTime - lastCelebrationTime > CELEBRATION_INTERVAL) {
         confetti({
@@ -334,3 +352,4 @@ function isDrawingComplete() {
 function notifyCompletionToOthers() {
     database.ref('games/' + gameId + '/completed').set(Date.now());
 }
+
