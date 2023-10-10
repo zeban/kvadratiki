@@ -7,7 +7,10 @@
     <title>Клеткун 1.0</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js">
+</script>
+ 
+
 
 </head>
 <body>
@@ -15,7 +18,7 @@
  <div class="buttons-container">
 
     <div class="2buttons"><button id="shareButton" class="custom-button">Поделиться</button>
-
+      <button id="taskButton" class="custom-button" >⚄</button>
     <a id="newGameButton" class="custom-button" target="_blank">Новая игра</a>
 
     </div>
@@ -38,10 +41,11 @@
 </div>
   </div>
   
-<div id="taskPanel" class="hidden">
-    <ul id="taskCoordinates"></ul>
+<div id="taskPanel" class="hidden" style="display:none";>
+    <button id="closeTaskPanel">╳</button>
+    <div id="taskCoordinates"></div>
 </div>
-  
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.0/dist/confetti.browser.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
