@@ -1,4 +1,4 @@
-/* Общие стили */
+v/* Общие стили */
 *, body {
     margin: 0;
     padding: 0;
@@ -37,7 +37,13 @@
     display: flex;
     justify-content: flex-start;
     color: grey;
-    font-size: 14px;
+    font-size: 18px;
+  z-index: 5;
+  
+}
+
+.cell, #vertical-coordinates > div {
+    box-sizing: border-box;
 }
 
 #vertical-coordinates {
@@ -50,6 +56,7 @@
     align-items: center;
     background: #ffffffc9;
 }
+
 
 #horizontal-coordinates {
     position: sticky;
@@ -73,7 +80,7 @@
     left: 0;
     right: 0;
     padding: 10px;
-    z-index: 1000;
+    z-index: 6;
     height: 60px;
 }
 
@@ -120,6 +127,7 @@
     overflow: hidden;
 }
 
+
 .board-wrapper {
     display: flex;
     flex-direction: row;
@@ -137,7 +145,7 @@
 /* Медиа-запрос для мобильных устройств */
 @media screen and (max-width: 768px) {
     #vertical-coordinates, #horizontal-coordinates {
-        font-size:8px;
+        font-size:12px;
     }
 
     .custom-button {
@@ -168,21 +176,47 @@
     }
 }
 
-/* Шторка  */
+/* Шторка */
 .hidden {
     display: none;
 }
 
 #taskPanel {
-    position: absolute;
+    position: fixed;
+    top: 0;  
     left: 0;
-    top: 0;
-    bottom: 0;
-    width: 200px;
-    background-color: rgba(0,0,0,0.7);
+    right: 0;        
+    height: 60px;   
+    background-color: white;
     overflow-y: auto;
+    z-index: 6;   
+    box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);  
+    padding: 10px;
+    display: flex;           /* делаем содержимое горизонтальным */
+    align-items: center;     /* выравнивание элементов по центру */
+    justify-content: center; /* центрируем содержимое */
 }
 
-#taskCoordinates li {
-    padding: 10px;
+
+
+#taskCoordinates div {
+    margin-left: 8px; 
+    margin-right: 8px;
+    display: inline-block;  /* элементы будут горизонтальными */
+}
+
+
+
+
+#closeTaskPanel {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: white;
+    border: none;
+    font-size: 1.5em;
+}
+
+#closeTaskPanel:hover {
+    color: #d32f2f;
 }
