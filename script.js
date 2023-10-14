@@ -24,6 +24,7 @@ if (levelId !== undefined) {
   // Если в URL нет levelId, устанавливаем начальный уровень (если это необходимо)
   currentLevel = 0;
 }
+let drawingChanged = false;
 loadLevel(currentLevel);
 
 let isNewGame = !gameId || gameId === 'play';
@@ -37,7 +38,7 @@ if (!gameId || gameId === 'play') {
 }
 if (!levelId) {
     levelId = initialLevelId.toString();  // default value for the initial level
-  
+
 }
 window.location.hash = "#/" + gameId + "/" + levelId;
 
@@ -132,6 +133,7 @@ cells.forEach(cell => {
 // Обработка кликов по доске
 board.addEventListener('click', function(e) {
     if (e.target.classList.contains('cell')) {
+        drawingChanged = true;
         const cell = e.target;
         const index = cell.dataset.index;
         const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
@@ -167,6 +169,7 @@ board.addEventListener('click', function(e) {
 
 //Отмечаем выполненные координаты
 function checkTaskCompletion() {
+   if (drawingChanged) return false;
     let allCoordsCompleted = true;
     currentTask.coordinates.forEach((coord, index) => {
         const [letter, number] = splitCoordinate(coord); // Разделяем координату
@@ -304,6 +307,7 @@ closeTaskPanelButton.addEventListener('click', function() {
 let lastCelebrationTime = 0;
 const CELEBRATION_INTERVAL = 10000; // 10 секунд
 function celebrateCompletion() {
+   drawingChanged = false;
     const currentTime = Date.now();
     if (currentTime - lastCelebrationTime > CELEBRATION_INTERVAL) {
         confetti({
@@ -335,6 +339,7 @@ function notifyCompletionToOthers() {
 //ЗАгружаем уровни
 const taskCoordinatesElement = document.getElementById('taskCoordinates');
 function loadLevel(levelId) {
+  drawingChanged = false;
   console.log("Function loadLevel is called with level:", levelId);
     // Очищаем текущую доску
     clearBoard();
