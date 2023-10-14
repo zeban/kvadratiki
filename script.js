@@ -15,8 +15,34 @@ const database = firebase.database();
 // === Настройки игры ===
 const cellsCount = 150;
 const totalCells = cellsCount * cellsCount;
-let gameId = window.location.hash.split('/').pop();
+
+const initialLevelId = 0;
+let [_, gameId, levelId] = window.location.hash.split('/');
+if (levelId !== undefined) {
+  currentLevel = parseInt(levelId, 10);
+} else {
+  // Если в URL нет levelId, устанавливаем начальный уровень (если это необходимо)
+  currentLevel = 0;
+}
+loadLevel(currentLevel);
+
 let isNewGame = !gameId || gameId === 'play';
+let currentBoardState = {};
+
+if (!gameId || gameId === 'play') {
+    gameId = Date.now().toString();
+
+if (!gameId || gameId === 'play') {
+    gameId = Date.now().toString();
+}
+if (!levelId) {
+    levelId = initialLevelId.toString();  // default value for the initial level
+  
+}
+window.location.hash = "#/" + gameId + "/" + levelId;
+
+}
+
 let currentTask = null;
 if (!currentTask) {
     currentTask = {
@@ -31,6 +57,10 @@ if (!userId) {
     userId = Date.now().toString();
     localStorage.setItem('userId', userId);
 }
+
+loadTaskForLevel(initialLevelId);
+loadDrawingForCurrentGame(initialLevelId);
+
 let lastCompletionTime = 0;  // глобальная переменная
 database.ref('games/' + gameId + '/completed').on('value', snapshot => {
     const completionTime = snapshot.val();
@@ -40,6 +70,9 @@ database.ref('games/' + gameId + '/completed').on('value', snapshot => {
         lastCompletionTime = completionTime;  // обновляем время последнего уведомления
     }
 });
+
+
+
 // Функция для генерации координат
 function generateCoordinates(count) {
     const coordinates = [];
@@ -74,6 +107,7 @@ for (let i = 0; i < totalCells; i++) {
 }
 board.appendChild(fragment);
 
+
 // Добавление обработчиков событий для клеток
 const cells = board.querySelectorAll('.cell');
 cells.forEach(cell => {
@@ -93,25 +127,43 @@ cells.forEach(cell => {
 });
 
 // Обработка кликов по доске
+// Обработка кликов по доске
+// Обработка кликов по доске
+// Обработка кликов по доске
 board.addEventListener('click', function(e) {
     if (e.target.classList.contains('cell')) {
         const cell = e.target;
         const index = cell.dataset.index;
-        if (cell.classList.contains('taken')) {
-            database.ref('games/' + gameId + '/cells/' + index).remove();
-        } else {
-            database.ref('games/' + gameId + '/cells/' + index).set(userId);
-        }
-        // Проверяем, только ли завершен рисунок
-        if (isDrawingJustCompleted()) {
-            celebrateCompletion(); // Запускаем конфети
-            notifyCompletionToOthers(); // Уведомляем о завершении рисунка в базе данных
-        } else if (!isDrawingComplete()) {
-            database.ref('games/' + gameId + '/completed').remove(); // Удаляем информацию о завершении из базы данных, если рисунок не завершен
-        }
-        checkTaskCompletion(); // Проверяем выполнение текущего задания
+        const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
+
+        // Проверяем текущее состояние клетки в базе данных
+        cellRef.once('value').then(snapshot => {
+            const isTaken = snapshot.val();
+            if (isTaken) {
+                // Если ячейка "занята", удаляем её из базы данных и убираем класс "занята"
+                cell.classList.remove('taken');
+                cellRef.remove();
+            } else {
+                // В противном случае добавляем информацию в базу данных и делаем ячейку "занятой"
+                cell.classList.add('taken');
+                cellRef.set(true);
+            }
+
+            // После изменения состояния ячейки проверяем выполнение задачи и отправляем изменения в реальном времени
+            if (isDrawingJustCompleted()) {
+                celebrateCompletion();
+                notifyCompletionToOthers();
+            } else if (!isDrawingComplete()) {
+                database.ref('games/' + gameId + '/completed').remove();
+            }
+            checkTaskCompletion();
+        });
     }
 });
+
+
+
+
 
 //Отмечаем выполненные координаты
 function checkTaskCompletion() {
@@ -213,7 +265,21 @@ newGameButton.addEventListener('click', function(e) {
 // З А Д А Н И Я
 // рисунок
 // Переменная для хранения текущего уровня
-let currentLevel = 1;
+
+database.ref(`games/${gameId}/levels/${currentLevel}/cells`).off('value');
+database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', snapshot => {
+    const cellsState = snapshot.val();
+    if (cellsState) {
+        allCells.forEach(cell => {
+            const index = cell.dataset.index;
+            if (cellsState[index]) {
+                cell.classList.add('taken');
+            } else {
+                cell.classList.remove('taken');
+            }
+        });
+    }
+});
 // обработчик для этой кнопки-шторки:
 const taskButton = document.getElementById('taskButton');
 const taskPanel = document.getElementById('taskPanel');
@@ -269,12 +335,21 @@ function notifyCompletionToOthers() {
 //ЗАгружаем уровни
 const taskCoordinatesElement = document.getElementById('taskCoordinates');
 function loadLevel(levelId) {
+  console.log("Function loadLevel is called with level:", levelId);
+    // Очищаем текущую доску
+    clearBoard();
+
+    // Загружаем рисунок для текущего уровня
+    loadDrawingForCurrentLevel();
+
+    // Загружаем задание для текущего уровня
     database.ref('levels/' + levelId).once('value').then(snapshot => {
+      console.log("Data loaded for level", levelId, ":", snapshot.val());
         const levelData = snapshot.val();
         if (levelData && levelData.task) {
             currentTask = levelData.task;
             console.log('Загруженные данные уровня:', currentTask);
-            displayCoordinates();  // <-- добавьте эту строку
+            displayCoordinates();
         } else {
             console.error('Ошибка: данные уровня не содержат задания.');
         }
@@ -283,26 +358,87 @@ function loadLevel(levelId) {
     });
 }
 
+
+
+
 // Кнопульки
 const prevLevelButton = document.getElementById('prevLevel');
 const nextLevelButton = document.getElementById('nextLevel');
+
 prevLevelButton.addEventListener('click', () => {
-    if (currentLevel > 1) {
+    if (currentLevel > 0) {
+        // Отключаем слушатель для текущего уровня
+        database.ref(`games/${gameId}/levels/${currentLevel}/cells`).off('value');
+
         currentLevel--;
-        loadLevel(currentLevel);
+
+        // Устанавливаем слушатель для нового уровня
+        database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', snapshot => {
+            const cellsState = snapshot.val();
+            if (cellsState) {
+                allCells.forEach(cell => {
+                    const index = cell.dataset.index;
+                    if (cellsState[index]) {
+                        cell.classList.add('taken');
+                    } else {
+                        cell.classList.remove('taken');
+                    }
+                });
+            }
+        });
+      console.log("Loading level:", currentLevel);
+        loadLevel(currentLevel); // Загрузить новый уровень
+
+// Update levelId and URL after changing the level
+levelId = currentLevel.toString();
+window.location.hash = "#/" + gameId + "/" + levelId;
+
     }
 });
+
 nextLevelButton.addEventListener('click', () => {
+    // Отключаем слушатель для текущего уровня
+    database.ref(`games/${gameId}/levels/${currentLevel}/cells`).off('value');
+
     currentLevel++;
-    loadLevel(currentLevel);
+
+    // Устанавливаем слушатель для нового уровня
+    database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', snapshot => {
+        const cellsState = snapshot.val();
+        if (cellsState) {
+            allCells.forEach(cell => {
+                const index = cell.dataset.index;
+                if (cellsState[index]) {
+                    cell.classList.add('taken');
+                } else {
+                    cell.classList.remove('taken');
+                }
+            });
+        }
+    });
+  console.log("Loading level:", currentLevel);
+    loadLevel(currentLevel); // Загрузить новый уровень
+
+// Update levelId and URL after changing the level
+levelId = currentLevel.toString();
+window.location.hash = "#/" + gameId + "/" + levelId;
+
 });
+
+
+
 
 taskButton.addEventListener('click', () => {
     // Открываем панель заданий
     taskPanel.style.display = 'block';
-    // Загружаем координаты текущего уровня
-    loadLevel(currentLevel);
+    // Здесь нет необходимости вызывать loadLevel и loadDrawingForCurrentGame,
+    // так как информация о задании уже была загружена при загрузке уровня.
+    displayCoordinates();
 });
+
+
+
+
 // Опционально: добавьте возможность закрыть панель заданий, если пользователь кликает вне ее
 document.addEventListener('click', (event) => {
     if (!taskPanel.contains(event.target) && event.target !== taskButton) {
@@ -333,4 +469,93 @@ function isDrawingComplete() {
         }
     }
     return true;
+}
+function loadTaskForLevel(gameId, levelId) {
+    database.ref(`games/${gameId}/levels/${levelId}/task`).once('value').then(snapshot => {
+        const taskData = snapshot.val();
+        console.log(`Загружено задание для уровня ${levelId}:`, taskData);
+        if (!taskData) {
+            console.error('Ошибка: нет данных для уровня', levelId);
+            return;
+        }
+        currentTask = taskData;
+        displayCoordinates();
+    }).catch(error => {
+        console.error("Ошибка при загрузке задания для уровня:", error);
+    });
+}
+
+
+
+function loadDrawingForCurrentGame(levelId) {
+  console.log("Загрузка рисунка для текущей игры началась");
+  database.ref('games/' + gameId + '/' + levelId).once('value').then(snapshot => {
+    const cells = snapshot.val() || {};
+    console.log(`Загружен рисунок для уровня ${currentLevel}:`, cells);
+    displayBoard(cells); 
+    console.log("Загрузка рисунка для текущей игры завершилась");
+  });
+}
+
+
+function displayBoard(cells) {
+    console.log("Отображение данных на доске:", cells);
+
+    // Сначала сбросьте состояние всех ячеек до начального
+    const allCells = document.querySelectorAll('.cell');
+    allCells.forEach(cell => {
+        cell.classList.remove('taken');
+    });
+
+    // Заполните ячейки на основе данных из базы данных
+    for (let index in cells) {
+        if (cells[index]) {  // если ячейка заполнена
+            const cellElement = document.querySelector(`.cell[data-index="${index}"]`);
+            if (cellElement) {
+                cellElement.classList.add('taken');
+            }
+        }
+    }
+
+    // Обновите состояние текущей доски
+    currentBoardState = cells;
+}
+
+
+
+
+function clearBoard() {
+    console.log("Очищаем доску");
+    const allCells = document.querySelectorAll('.cell');
+    allCells.forEach(cell => {
+        cell.className = 'cell'; // это сбросит все классы ячейки к 'cell'
+    });
+}
+
+
+
+
+function saveDrawingForCurrentLevel(cells) {
+    // Используйте уникальный идентификатор уровня, например, currentLevel, как ключ
+    const levelId = currentLevel; // Используйте уникальный идентификатор уровня
+    const levelRef = database.ref(`games/${gameId}/levels/${levelId}/cells`);
+    levelRef.set(cells);
+}
+
+
+function loadDrawingForCurrentLevel() {
+    // Используйте уникальный идентификатор уровня, например, currentLevel, для загрузки рисунка
+    const levelId = currentLevel; // Используйте уникальный идентификатор уровня
+    const levelRef = database.ref(`games/${gameId}/levels/${levelId}/cells`);
+
+    levelRef.once('value').then(snapshot => {
+        const cells = snapshot.val() || {};
+        console.log(`Загружен рисунок для уровня ${levelId}:`, cells);
+        displayBoard(cells); // Отображаем рисунок на доске
+
+        // Отправляем изменения в реальном времени в Firebase Realtime Database
+
+    }).catch(error => {
+        console.error("Ошибка при загрузке рисунка для уровня:", error);
+    });
 }
