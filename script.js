@@ -15,6 +15,11 @@ const database = firebase.database();
 // === Настройки игры ===
 const cellsCount = 150;
 const totalCells = cellsCount * cellsCount;
+const levelNumberElement = document.getElementById("levelNumber");
+
+function updateLevelDisplay() {
+    levelNumberElement.textContent = currentLevel;
+}
 
 const initialLevelId = 0;
 let [_, gameId, levelId] = window.location.hash.split('/');
@@ -144,12 +149,16 @@ board.addEventListener('click', function(e) {
             if (isTaken) {
                 // Если ячейка "занята", удаляем её из базы данных и убираем класс "занята"
                 cell.classList.remove('taken');
+                checkTaskCompletion();   // <-- Добавлено
                 cellRef.remove();
             } else {
                 // В противном случае добавляем информацию в базу данных и делаем ячейку "занятой"
                 cell.classList.add('taken');
+                checkTaskCompletion();   // <-- Добавлено
                 cellRef.set(true);
             }
+          drawingChanged = false; 
+          displayCoordinates(); // <-- Добавьте этот вызов
 
             // После изменения состояния ячейки проверяем выполнение задачи и отправляем изменения в реальном времени
             if (isDrawingJustCompleted()) {
@@ -158,10 +167,10 @@ board.addEventListener('click', function(e) {
             } else if (!isDrawingComplete()) {
                 database.ref('games/' + gameId + '/completed').remove();
             }
-            checkTaskCompletion();
         });
     }
 });
+
 
 
 
@@ -178,9 +187,11 @@ function checkTaskCompletion() {
         const coordElement = taskCoordinates.children[index];
         if (coordElement) {
             if (cell.classList.contains('taken')) {
-                coordElement.style.color = 'green';
+              coordElement.classList.add('highlighted');
+              coordElement.classList.remove('bhighlighted');
             } else {
-                coordElement.style.color = 'black';
+              coordElement.classList.remove('highlighted');
+              coordElement.classList.add('bhighlighted');
                 allCoordsCompleted = false;
             }
         }
@@ -283,10 +294,6 @@ database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', snapsho
         });
     }
 });
-// обработчик для этой кнопки-шторки:
-const taskButton = document.getElementById('taskButton');
-const taskPanel = document.getElementById('taskPanel');
-const taskCoordinates = document.getElementById('taskCoordinates');
 taskButton.addEventListener('click', function() {
     taskCoordinates.innerHTML = '';
     currentTask.coordinates.forEach(coord => {
@@ -295,14 +302,17 @@ taskButton.addEventListener('click', function() {
         taskCoordinates.appendChild(coordElement);
     });
     checkTaskCompletion();
-    taskPanel.style.display = 'block'; // показываем панель
+
+    // Тогглим панель заданий
+    if (taskPanel.style.display === 'flex') {
+        taskPanel.style.display = 'none'; // скрываем панель, если она открыта
+    } else {
+        taskPanel.style.display = 'flex'; // показываем панель, если она закрыта
+    }
 });
 
-// закрыть шторку
-const closeTaskPanelButton = document.getElementById('closeTaskPanel');
-closeTaskPanelButton.addEventListener('click', function() {
-    taskPanel.style.display = 'none';
-});
+
+
 // Кофетти
 let lastCelebrationTime = 0;
 const CELEBRATION_INTERVAL = 10000; // 10 секунд
@@ -338,9 +348,11 @@ function notifyCompletionToOthers() {
 
 //ЗАгружаем уровни
 const taskCoordinatesElement = document.getElementById('taskCoordinates');
+
 function loadLevel(levelId) {
-  drawingChanged = false;
-  console.log("Function loadLevel is called with level:", levelId);
+    drawingChanged = false;
+    console.log("Function loadLevel is called with level:", levelId);
+    
     // Очищаем текущую доску
     clearBoard();
 
@@ -349,12 +361,12 @@ function loadLevel(levelId) {
 
     // Загружаем задание для текущего уровня
     database.ref('levels/' + levelId).once('value').then(snapshot => {
-      console.log("Data loaded for level", levelId, ":", snapshot.val());
+        console.log("Data loaded for level", levelId, ":", snapshot.val());
         const levelData = snapshot.val();
         if (levelData && levelData.task) {
             currentTask = levelData.task;
+            updateTaskPanel();   // <-- Обновляем панель заданий
             console.log('Загруженные данные уровня:', currentTask);
-            displayCoordinates();
         } else {
             console.error('Ошибка: данные уровня не содержат задания.');
         }
@@ -363,6 +375,10 @@ function loadLevel(levelId) {
     });
 }
 
+function updateTaskPanel() {
+    drawingChanged = false;
+    displayCoordinates();
+}
 
 
 
@@ -376,6 +392,7 @@ prevLevelButton.addEventListener('click', () => {
         database.ref(`games/${gameId}/levels/${currentLevel}/cells`).off('value');
 
         currentLevel--;
+      updateLevelDisplay()
 
         // Устанавливаем слушатель для нового уровня
         database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', snapshot => {
@@ -391,6 +408,7 @@ prevLevelButton.addEventListener('click', () => {
                 });
             }
         });
+      
       console.log("Loading level:", currentLevel);
         loadLevel(currentLevel); // Загрузить новый уровень
 
@@ -406,6 +424,7 @@ nextLevelButton.addEventListener('click', () => {
     database.ref(`games/${gameId}/levels/${currentLevel}/cells`).off('value');
 
     currentLevel++;
+  updateLevelDisplay()
 
     // Устанавливаем слушатель для нового уровня
     database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', snapshot => {
@@ -433,23 +452,10 @@ window.location.hash = "#/" + gameId + "/" + levelId;
 
 
 
-taskButton.addEventListener('click', () => {
-    // Открываем панель заданий
-    taskPanel.style.display = 'block';
-    // Здесь нет необходимости вызывать loadLevel и loadDrawingForCurrentGame,
-    // так как информация о задании уже была загружена при загрузке уровня.
-    displayCoordinates();
-});
 
 
 
 
-// Опционально: добавьте возможность закрыть панель заданий, если пользователь кликает вне ее
-document.addEventListener('click', (event) => {
-    if (!taskPanel.contains(event.target) && event.target !== taskButton) {
-        taskPanel.style.display = 'none';
-    }
-});
 
 function displayCoordinates() {
     taskCoordinates.innerHTML = '';
@@ -459,7 +465,8 @@ function displayCoordinates() {
         taskCoordinates.appendChild(coordElement);
     });
     checkTaskCompletion();
-    taskPanel.style.display = 'block'; // показываем панель
+  
+    
 }
 function isDrawingComplete() {
     if (!currentTask || !currentTask.coordinates) {
@@ -484,6 +491,7 @@ function loadTaskForLevel(gameId, levelId) {
             return;
         }
         currentTask = taskData;
+      drawingChanged = false; 
         displayCoordinates();
     }).catch(error => {
         console.error("Ошибка при загрузке задания для уровня:", error);
@@ -564,3 +572,5 @@ function loadDrawingForCurrentLevel() {
         console.error("Ошибка при загрузке рисунка для уровня:", error);
     });
 }
+
+updateLevelDisplay();
