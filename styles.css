@@ -79,7 +79,7 @@ v/* Общие стили */
 /* Стили кнопок */
 .buttons-container {
     position: fixed;
-    top: 36px;
+    top: 8px;
     right: 0;
     display: flex;
     align-items: center;
@@ -164,6 +164,7 @@ v/* Общие стили */
     flex-direction: column;  
     align-items: flex-start;
     min-height: calc(150 * 4vw + 4vw + 1vw);
+  padding-top: 48px;
 }
 
 /* Медиа-запрос для мобильных устройств */
@@ -204,7 +205,7 @@ v/* Общие стили */
 
 #taskPanel {
     position: fixed;
-    top: 36px;
+    top: 8px;
     left: 30px;
     flex-grow: 1;
     flex-direction: row;
