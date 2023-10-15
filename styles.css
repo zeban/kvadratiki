@@ -27,6 +27,12 @@ v/* Общие стили */
     border: 1px solid #404040;
 }
 
+
+#taskPanel.hidden {
+    display: none;
+}
+
+
 /* Стили координат */
 .highlighted-coordinate {
     font-weight: bold;
@@ -72,17 +78,35 @@ v/* Общие стили */
 
 /* Стили кнопок */
 .buttons-container {
-    display: flex;
-    justify-content: right;
-    align-items: center;
     position: fixed;
-    top: 0;
-    left: 0;
+    top: 36px;
     right: 0;
-    padding: 10px;
-    z-index: 6;
-    height: 60px;
+    display: flex;
+    align-items: center;
+  z-index: 105;
+   justify-content: space-between;  
 }
+
+
+
+
+
+#taskCoordinates div {
+    margin-left: 8px; 
+    margin-right: 8px;
+    display: inline-block;  /* элементы будут горизонтальными */
+}
+
+
+
+
+
+.mainbuttons {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
 
 .custom-button {
     background-color: white;
@@ -176,47 +200,67 @@ v/* Общие стили */
     }
 }
 
-/* Шторка */
-.hidden {
-    display: none;
-}
+
 
 #taskPanel {
     position: fixed;
-    top: 0;  
-    left: 0;
-    right: 0;        
-    height: 60px;   
-    background-color: white;
-    overflow-y: auto;
-    z-index: 6;   
-    box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);  
-    padding: 10px;
-    display: flex;           /* делаем содержимое горизонтальным */
-    align-items: center;     /* выравнивание элементов по центру */
-    justify-content: center; /* центрируем содержимое */
+    top: 36px;
+    left: 30px;
+    flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
+    width: auto; /* Убедитесь, что ширина не фиксирована */
+    z-index: 106; /* Чтобы элемент был поверх других */
+   background: #ffffffc9;
 }
 
 
 
-#taskCoordinates div {
-    margin-left: 8px; 
-    margin-right: 8px;
-    display: inline-block;  /* элементы будут горизонтальными */
+.mainbuttons {
+   /* width: 200px;  Примерное значение. Установите нужную ширину */
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
 }
 
+.custom-button2 {
+display: inline-flex;
+padding: 4px 10px;
+align-items: flex-start;
+gap: 10px;
+  background-color: white;
+  color: black;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 25px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 
-
-
-#closeTaskPanel {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background-color: white;
-    border: none;
-    font-size: 1.5em;
+  cursor: pointer;
+  transition: transform 0.2s;
+  font-size: 18px;
+  
 }
 
-#closeTaskPanel:hover {
-    color: #d32f2f;
+.highlighted {
+  display: inline-flex;
+  height: 28px;
+  padding: 4px;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: #D1F862;
+}
+
+.bhighlighted {
+  display: inline-flex;
+  height: 28px;
+  padding: 4px;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: #EAE2E2;
 }
