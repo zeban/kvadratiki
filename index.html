@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width">
 
-    <title>Клеткун 1.0</title>
+    <title>Тетрадь общая</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js">
@@ -14,37 +15,42 @@
 
 </head>
 <body>
-      
- <div class="buttons-container">
 
-    <div class="2buttons"><button id="shareButton" class="custom-button">Поделиться</button>
-      <button id="taskButton" class="custom-button" >⚄</button>
-    <a id="newGameButton" class="custom-button" target="_blank">Новая игра</a>
+    
+  
 
-    </div>
-    </div>
-</div>
-
-  <div class="outer-container">
-<div id="board-container">
-    <div id="horizontal-coordinates">
-        <!-- здесь буквы -->
-    </div>
-    <div class="board-wrapper">
-        <div id="vertical-coordinates">
-            <!-- здесь цифры -->
-        </div>
-        <div id="board">
-            <!-- здесь клетки -->
-        </div>
-    </div>
-</div>
+      <!-- Кнопки -->
+     
+  <div id="taskPanel" class="hidden">
+      <div class="nextprev">
+        <button id="prevLevel" class="custom-button2">←</button>
+        <span id="levelNumber"></span>
+        <button id="nextLevel" class="custom-button2">→</button>
+      </div>
+      <div id="taskCoordinates"></div>
   </div>
   
-<div id="taskPanel" class="hidden" style="display:none";>
-    <button id="closeTaskPanel">╳</button>
-    <div id="taskCoordinates"></div>
-</div>
+  <div class="buttons-container">  
+        <div class="mainbuttons">
+          <button id="shareButton" class="custom-button">Поделиться</button>
+          <button id="taskButton" class="custom-button">Tasks</button>
+          <a id="newGameButton" class="custom-button" target="_blank">New Game</a> 
+        </div>
+      </div>
+
+    
+  <!-- Основной контейнер для доски -->
+  <div class="outer-container">
+      <div id="board-container">
+          <div id="horizontal-coordinates"></div>
+          <div class="board-wrapper">
+              <div id="vertical-coordinates"></div>
+              <div id="board"></div>
+          </div>
+      </div>
+  </div>
+
+
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.0/dist/confetti.browser.min.js"></script>
     <script src="script.js"></script>
 </body>
