@@ -138,10 +138,17 @@ cells.forEach(cell => {
 // Обработка кликов по доске
 board.addEventListener('click', function(e) {
     if (e.target.classList.contains('cell')) {
+      database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', function(snapshot) {
+          console.log("Firebase value event triggered:", snapshot.val());
+         updateTaskPanel();
+      });
+      
+
         drawingChanged = true;
         const cell = e.target;
         const index = cell.dataset.index;
         const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
+      
 
         // Проверяем текущее состояние клетки в базе данных
         cellRef.once('value').then(snapshot => {
@@ -170,7 +177,6 @@ board.addEventListener('click', function(e) {
         });
     }
 });
-
 
 
 
