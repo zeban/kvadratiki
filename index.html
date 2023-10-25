@@ -3,42 +3,49 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
 
     <title>Тетрадь общая</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js">
 </script>
- 
+
 
 
 </head>
 <body>
 
-    
-  
+
+
 
       <!-- Кнопки -->
-     
-  <div id="taskPanel" class="hidden">
+
+  <div id="menuContainer">
       <div class="nextprev">
-        <button id="prevLevel" class="custom-button2">←</button>
-        <span id="levelNumber"></span>
-        <button id="nextLevel" class="custom-button2">→</button>
-      </div>
-      <div id="taskCoordinates"></div>
-  </div>
-  
-  <div class="buttons-container">  
-        <div class="mainbuttons">
-          <button id="shareButton" class="custom-button">Поделиться</button>
-          <button id="taskButton" class="custom-button">Tasks</button>
-          <a id="newGameButton" class="custom-button" target="_blank">New Game</a> 
-        </div>
+          <button id="prevLevel" class="custom-button2">←</button>
+          <span id="levelNumber"> ⛄︎ </span>
+          <button id="nextLevel" class="custom-button2" data-tooltip="Завершите этот уровень для доступа к следующему 😉">→</button>
       </div>
 
-    
+      <div id="taskCoordinates"></div>
+
+      <div class="mainbuttons">
+
+
+          <button id="shareButton" class="custom-button">Играть с друзьями</button>
+          <a id="newGameButton" class="custom-button" target="_blank">New Game</a>
+      </div>
+  </div>
+
+  <div class="zoom-buttons">
+      <button id="zoomIn" class="custom-button" disabled>＋</button>
+      <button id="zoomOut" class="custom-button">-</button>
+  </div>
+
+
+
   <!-- Основной контейнер для доски -->
   <div class="outer-container">
       <div id="board-container">
@@ -47,6 +54,15 @@
               <div id="vertical-coordinates"></div>
               <div id="board"></div>
           </div>
+      </div>
+  </div>
+
+  <!-- Модальное окно -->
+  <div id="modal" style="display: none;">
+      <div class="modal-content">
+          <h2>Поздравляем!</h2>
+          <p>Вы прошли все уровни. Круто! Порисуйте вместе с друзьями.</p>
+          <button id="returnToFirstLevel">Вернуться к первому уровню</button>
       </div>
   </div>
 
