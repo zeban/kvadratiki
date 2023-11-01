@@ -1,3 +1,18 @@
+
+let currentUserLevel = 0; // Default starting level, can be changed based on user's progress
+
+// Update the user level when the user selects a new level
+
+
+// When updating the board from Firebase updates
+function updateBoardFromFirebase(data) {
+    const updateLevel = data.level; // Assuming the update has a 'level' property
+    if (updateLevel === currentUserLevel) {
+        // Only update the board if the levels match
+        // ... your logic to update the board
+    }
+}
+
 // === Настройки Firebase ===
 const firebaseConfig = {
     apiKey: "AIzaSyBRFHQZYMG6QSA1gyw8lHw0gIhVajpvgjU",
@@ -20,12 +35,9 @@ const levelNumberElement = document.getElementById("levelNumber");
 function updateLevelDisplay() {
     levelNumberElement.textContent = currentLevel;
 }
-
+const userLevels = {}; // Объект для отслеживания активного уровня для каждого пользователя
 const initialLevelId = 0;
-let isFirstLoad = true;
-
 let [_, gameId, levelId] = window.location.hash.split('/');
-
 if (levelId !== undefined) {
   currentLevel = parseInt(levelId, 10);
 } else {
@@ -33,23 +45,20 @@ if (levelId !== undefined) {
   currentLevel = 0;
 }
 let drawingChanged = false;
-loadLevel(currentLevel);
+
 
 let currentBoardState = {};
-
 if (!gameId || gameId === 'play') {
-    gameId = Date.now().toString();
-
-if (!gameId || gameId === 'play') {
-    gameId = Date.now().toString();
+  gameId = Date.now().toString();
 }
+
 if (!levelId) {
-    levelId = initialLevelId.toString();  // default value for the initial level
-
+  levelId = initialLevelId.toString();  // default value for the initial level
 }
+
 window.location.hash = "#/" + gameId + "/" + levelId;
 
-}
+
 
 let currentTask = null;
 if (!currentTask) {
@@ -69,21 +78,28 @@ database.ref('levels').once('value').then(snapshot => {
 
 
 
-// Инициализация или получение ID пользователя
+// Получение или генерация userId
 let userId = localStorage.getItem('userId');
 if (!userId) {
     userId = Date.now().toString();
     localStorage.setItem('userId', userId);
+  console.log("UserId:", userId);
+
 }
 
 
-loadDrawingForCurrentGame(initialLevelId);
+
+loadLevel(currentLevel);
+
+loadDrawingForCurrentGame(currentLevel);
+
 
 let lastCompletionTime = 0;  // глобальная переменная
 database.ref('games/' + gameId + '/completed').on('value', snapshot => {
     const completionTime = snapshot.val();
     // Если есть новое уведомление, показываем конфети
     if (completionTime && completionTime !== lastCompletionTime) {
+       
         lastCompletionTime = completionTime;  // обновляем время последнего уведомления
     }
 });
@@ -146,51 +162,85 @@ cells.forEach(cell => {
 
 // Обработка кликов по доске
 // Обработка кликов по доске
-// Обработка кликов по доске
-// Обработка кликов по доске
-board.addEventListener('click', function(e) {
-    if (e.target.classList.contains('cell')) {
-      database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', function(snapshot) {
-          console.log("Firebase value event triggered:", snapshot.val());
-         updateTaskPanel();
-      });
+let currentListenerRef = null;
 
+// Определение функции для установки слушателей Firebase
+function setupFirebaseListeners() {
+  // Отключаем предыдущий слушатель, если он существует
+  if (currentListenerRef) {
+    console.log(`[DEBUG] Removing listener for level: ${currentLevel}`);
 
-        drawingChanged = true;
-        const cell = e.target;
+      currentListenerRef.off('value');
+  }
+
+  // Устанавливаем новый слушатель для текущего уровня
+  currentListenerRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells`);
+  console.log(`[DEBUG] Setting up listener for level: ${currentLevel}`);
+
+  currentListenerRef.on('value', snapshot => {
+    console.log(`[DEBUG] Firebase update detected for level ${currentLevel}`);
+
+    const cellsState = snapshot.val();
+    if (cellsState) {
+      allCells.forEach(cell => {
         const index = cell.dataset.index;
-        const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
-
-
-        // Проверяем текущее состояние клетки в базе данных
-        cellRef.once('value').then(snapshot => {
-            const isTaken = snapshot.val();
-            if (isTaken) {
-                // Если ячейка "занята", удаляем её из базы данных и убираем класс "занята"
-                cell.classList.remove('taken');
-                checkTaskCompletion();   // <-- Добавлено
-                cellRef.remove();
-            } else {
-                // В противном случае добавляем информацию в базу данных и делаем ячейку "занятой"
-                cell.classList.add('taken');
-                checkTaskCompletion();   // <-- Добавлено
-                cellRef.set(true);
-            }
-          drawingChanged = false; 
-          displayCoordinates(); // <-- Добавьте этот вызов
-
-            // После изменения состояния ячейки проверяем выполнение задачи и отправляем изменения в реальном времени
-            if (isDrawingJustCompleted()) {
-              showConfetti();
-              markLevelAsCompleted();
-              checkLevelCompletion();
-                notifyCompletionToOthers();
-            } else if (!isDrawingComplete()) {
-                database.ref('games/' + gameId + '/completed').remove();
-            }
-        });
+        if (cellsState[index]) {
+          cell.classList.add('taken');
+        } else {
+          cell.classList.remove('taken');
+        }
+      });
     }
+  });
+}
+// Обработка кликов по доске
+
+// Функция для обработки кликов по ячейкам
+// Функция для обработки кликов по ячейкам
+function handleCellClick(cell) {
+  console.log('[DEBUG] handleCellClick called');
+  drawingChanged = true;
+  const index = cell.dataset.index;
+  const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
+
+  // Проверяем текущее состояние клетки в базе данных
+  cellRef.once('value').then(snapshot => {
+    const isTaken = snapshot.val();
+    console.log(`[DEBUG] Cell at index ${index} isTaken: ${isTaken}`);
+
+    // Переключаем состояние ячейки в зависимости от значения isTaken
+    if (isTaken) {
+      cell.classList.remove('taken');
+      cellRef.remove();
+    } else {
+      cell.classList.add('taken');
+      cellRef.set(true);
+    }
+
+    drawingChanged = false;
+    displayCoordinates();
+
+    if (isDrawingJustCompleted()) {
+      showConfetti();
+      markLevelAsCompleted();
+      checkLevelCompletion();
+      notifyCompletionToOthers();
+    } else if (!isDrawingComplete()) {
+      database.ref('games/' + gameId + '/completed').remove();
+    }
+  });
+}
+
+
+// Добавление слушателя кликов по доске
+board.addEventListener('click', function(e) {
+  if (e.target.classList.contains('cell')) {
+    handleCellClick(e.target);
+  }
 });
+
+// Вызываем функцию для установки слушателей при загрузке страницы
+setupFirebaseListeners();
 
 
 
@@ -220,55 +270,58 @@ function checkTaskCompletion() {
     return allCoordsCompleted;
 
 }
+
 function splitCoordinate(coord) {
     const letter = coord.match(/[A-Z]+/)[0];
     const number = parseInt(coord.match(/\d+/)[0], 10);
-    console.log(`Для координаты ${coord} буква: ${letter}, число: ${number}`); // Для диагностики
     return [letter, number];
+    // === Для диагностики ===
+    console.log(splitCoordinate('D1')); // Должно вывести: ['D', '1']
 }
-
 function getCellIndex(letter, number) {
     const columnIndex = horizontalLabels.indexOf(letter);
-    const index = (number - 1) * cellsCount + columnIndex;
-    console.log(`Для координаты ${letter}${number} индекс ячейки: ${index}`); // Для диагностики
-    return index;
+    return (number - 1) * cellsCount + columnIndex;
+    // === Для диагностики ===
+    console.log(getCellIndex('D', 1)); // Должно вывести индекс клетки для координаты D1
 }
-
 // Обработка обновлений клеток
 function handleCellUpdate(snapshot) {
     const cellIndex = snapshot.key;
     const cellOwner = snapshot.val();
     const cell = board.querySelector(`[data-index="${cellIndex}"]`);
     if (cellOwner) {
-        cell.classList.add('taken');
-        cell.dataset.owner = cellOwner;
+        if (!cell.classList.contains('taken')) {
+            cell.classList.add('taken');
+            cell.dataset.owner = cellOwner;
+        }
     } else {
-        cell.classList.remove('taken');
-        delete cell.dataset.owner;
+        if (cell.classList.contains('taken')) {
+            cell.classList.remove('taken');
+            delete cell.dataset.owner;
+        }
     }
 }
+
 // слушатель конфетти для всех
 let lastCelebratedCompletion = 0;
 database.ref('games/' + gameId + '/completed').on('value', (snapshot) => {
+  console.log("Listener for 'completed' triggered");
+
     const completionTime = snapshot.val();
     if (completionTime && completionTime > lastCelebratedCompletion) {
         showConfetti();
         lastCelebratedCompletion = completionTime;
     }
 });
-
-database.ref('games/' + gameId + '/cells/').on('child_changed', (snapshot) => {
-    handleCellUpdate(snapshot);
-});
-database.ref('games/' + gameId + '/cells/').on('child_added', (snapshot) => {
-    handleCellUpdate(snapshot);
-});
-database.ref('games/' + gameId + '/cells/').on('child_removed', (snapshot) => {
+database.ref(`games/${gameId}/levels/${currentLevel}/drawing`).on('child_changed', handleCellUpdate);
+database.ref(`games/${gameId}/levels/${currentLevel}/drawing`).on('child_added', handleCellUpdate);
+database.ref(`games/${gameId}/levels/${currentLevel}/drawing`).on('child_removed', (snapshot) => {
     const cellIndex = snapshot.key;
     const cell = board.querySelector(`[data-index="${cellIndex}"]`);
     cell.classList.remove('taken');
     delete cell.dataset.owner;
 });
+
 // Обработка кнопок "Поделиться" и "Новая игра"
 const shareButton = document.getElementById('shareButton');
 shareButton.addEventListener('click', function() {
@@ -288,36 +341,22 @@ shareButton.addEventListener('click', function() {
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        shareButton.innerText = "Ссылка скопирована, отправьте друзьям!";
+        shareButton.innerText = "Ссылка скопирована";
         setTimeout(() => {
-            shareButton.innerText = "Играть с друзьями";
-        }, 3000);
+            shareButton.innerText = "Поделиться";
+        }, 2000);
     }
 });
 newGameButton.addEventListener('click', function(e) {
-    const newGameId = "0";
-    const newGameUrl = window.location.origin + window.location.pathname + '#/play/' + newGameId;
+    const newGameId = Date.now().toString();
+    const newLevelId = "0";  // Устанавливаем ID уровня на 0 для новой игры
+    const newGameUrl = window.location.origin + window.location.pathname + '#/' + newGameId + '/' + newLevelId;
     newGameButton.href = newGameUrl;
 });
 
 // З А Д А Н И Я
 // рисунок
 // Переменная для хранения текущего уровня
-
-database.ref(`games/${gameId}/levels/${currentLevel}/cells`).off('value');
-database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', snapshot => {
-    const cellsState = snapshot.val();
-    if (cellsState) {
-        allCells.forEach(cell => {
-            const index = cell.dataset.index;
-            if (cellsState[index]) {
-                cell.classList.add('taken');
-            } else {
-                cell.classList.remove('taken');
-            }
-        });
-    }
-});
 
 
 
@@ -340,7 +379,7 @@ function markLevelAsCompleted() {
     database.ref('games/' + gameId + '/completedLevels/' + currentLevel).once('value').then(snapshot => {
         if (!snapshot.val()) {
             database.ref('games/' + gameId + '/completedLevels/' + currentLevel).set(true);
-        
+     
         }
     });
 }
@@ -348,21 +387,16 @@ function markLevelAsCompleted() {
 
 
 // Проверка завершенности рисунка
-let levelCompleted = false;
 let wasDrawingComplete = false;
-
 function isDrawingJustCompleted() {
     const currentlyComplete = isDrawingComplete();
-    if (!wasDrawingComplete && currentlyComplete && !isFirstLoad) {
+    if (!wasDrawingComplete && currentlyComplete) {
         wasDrawingComplete = true;
         return true;
     }
     wasDrawingComplete = currentlyComplete;
-    isFirstLoad = false; // Сбросить флаг первой загрузки после первой проверки
     return false;
 }
-
-
 
 //Конфетти у всех
 function notifyCompletionToOthers() {
@@ -373,7 +407,8 @@ function notifyCompletionToOthers() {
 //ЗАгружаем уровни
 
 
-function loadLevel(levelId) {
+console.log("Starting to load level");
+async function loadLevel(levelId) {
     drawingChanged = false;
     console.log("Function loadLevel is called with level:", levelId);
 
@@ -384,13 +419,18 @@ function loadLevel(levelId) {
     loadDrawingForCurrentLevel();
 
     // Загружаем задание для текущего уровня
-    database.ref('levels/' + levelId).once('value').then(snapshot => {
+    await database.ref('levels/' + levelId).once('value').then(snapshot => {
         console.log("Data loaded for level", levelId, ":", snapshot.val());
         const levelData = snapshot.val();
         if (levelData && levelData.task) {
             currentTask = levelData.task;
             updateTaskPanel();   // <-- Обновляем панель заданий
             console.log('Загруженные данные уровня:', currentTask);
+
+            // Вызываем функцию для обновления текущего уровня пользователя
+          console.log("Type of currentLevel:", typeof currentLevel);
+
+          
         } else {
             console.error('Ошибка: данные уровня не содержат задания.');
         }
@@ -399,83 +439,37 @@ function loadLevel(levelId) {
     });
 }
 
+console.log("Finished loading level");
 function updateTaskPanel() {
     drawingChanged = false;
     displayCoordinates();
 }
 
 
+async function setLevelHandlersAndLoadData() {
+    console.log(`[DEBUG] Setting handlers and loading data for level ${currentLevel}`);
 
-// Кнопульки
-const prevLevelButton = document.getElementById('prevLevel');
-const nextLevelButton = document.getElementById('nextLevel');
+    // Отключаем предыдущие слушатели перед установкой новых
+    const cellsRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells`);
+    const drawingRef = database.ref(`games/${gameId}/levels/${currentLevel}/drawing`);
 
-prevLevelButton.addEventListener('click', () => {
-   console.log("Before change: currentLevel =", currentLevel);
-   if (currentLevel > 0) {
-       currentLevel--;
-   } else {
-       currentLevel = maxLevels - 1;  // Если на первом уровне, переключаемся на последний уровень.
-   }
-   console.log("After change: currentLevel =", currentLevel);
+    // Отключаем слушатели для cells
+    cellsRef.off();
 
-   // Отключаем слушатели для текущего уровня
-   database.ref(`games/${gameId}/levels/${currentLevel}/cells`).off('value');
-   database.ref('games/' + gameId + '/completedLevels/' + currentLevel).off('value');
-
-   updateLevelDisplay();
-
-   // Устанавливаем слушатели для нового уровня
-   database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', snapshot => {
-       const cellsState = snapshot.val();
-       if (cellsState) {
-           allCells.forEach(cell => {
-               const index = cell.dataset.index;
-               if (cellsState[index]) {
-                   cell.classList.add('taken');
-               } else {
-                   cell.classList.remove('taken');
-               }
-           });
-       }
-   });
-
-   console.log("Loading level:", currentLevel);
-   loadLevel(currentLevel); // Загрузить новый уровень
-   setTimeout(checkScrollRequired, 100);
-
-   // Update levelId and URL after changing the level
-   levelId = currentLevel.toString();
-   window.location.hash = "#/" + gameId + "/" + levelId;
-});
-
-
-
-
-nextLevelButton.addEventListener('click', () => {
-   console.log("Before change: currentLevel =", currentLevel);
-  if (currentLevel < maxLevels - 1) {
-      currentLevel++;
-  } else {
-      currentLevel = 0;  // Если на последнем уровне, переключаемся на первый уровень.
-  }
-   console.log("After change: currentLevel =", currentLevel);
+    // Отключаем слушатели для drawing
   
+    drawingRef.off('child_changed', handleCellUpdate);
+    drawingRef.off('child_added', handleCellUpdate);
+    drawingRef.off('child_removed');
 
-    // Отключаем слушатель для текущего уровня
-    database.ref(`games/${gameId}/levels/${currentLevel}/cells`).off('value');
+    // Устанавливаем новые слушатели для cells
+    cellsRef.on('value', snapshot => {
+      console.log(`[DEBUG] Raw Firebase update:`, snapshot.val());
 
-    // Отключаем старый слушатель
-    database.ref('games/' + gameId + '/completedLevels/' + currentLevel).off('value');
-
-  updateLevelDisplay()
-
-
-    // Устанавливаем слушатель для нового уровня
-    database.ref(`games/${gameId}/levels/${currentLevel}/cells`).on('value', snapshot => {
+        console.log(`[DEBUG] Firebase update detected for level ${currentLevel}`);
 
         const cellsState = snapshot.val();
-        if (cellsState) {
+          if (cellsState && currentLevel === 2) {  // Добавьте эту проверку
             allCells.forEach(cell => {
                 const index = cell.dataset.index;
                 if (cellsState[index]) {
@@ -486,19 +480,68 @@ nextLevelButton.addEventListener('click', () => {
             });
         }
     });
-  console.log("Loading level:", currentLevel);
-    loadLevel(currentLevel); // Загрузить новый уровень
-  // Вызывать функцию checkScrollRequired с задержкой в 1.5 секунды после загрузки уровня
-  setTimeout(checkScrollRequired, 100);
 
-// Update levelId and URL after changing the level
-levelId = currentLevel.toString();
-window.location.hash = "#/" + gameId + "/" + levelId;
+    // Здесь вы можете установить другие слушатели для drawing, если это необходимо
 
+    // Загрузка рисунка для текущего уровня
+    await loadDrawingForCurrentGame(currentLevel);
+
+    // Обновляем отображение уровня
+    updateLevelDisplay();
+
+    // После того, как рисунок загружен, вызываем loadLevel
+    loadLevel(currentLevel);
+}
+
+console.log("Type of currentLevel:", typeof currentLevel);
+
+
+
+// Кнопульки
+// Кнопки
+const prevLevelButton = document.getElementById('prevLevel');
+const nextLevelButton = document.getElementById('nextLevel');
+prevLevelButton.addEventListener('click', () => {
+    console.log(`[DEBUG] prevLevelButton clicked. Current level: ${currentLevel}`);
+
+    if (currentLevel > 0) {
+        currentLevel--;
+    } else {
+        // Если на первом уровне, переключаемся на последний уровень.
+        currentLevel = maxLevels - 1;
+    }
+  console.log(`[DEBUG] New current level: ${currentLevel}`);
+
+    setLevelHandlersAndLoadData();
+  setupFirebaseListeners();
+
+    // Обновляем URL
+    levelId = currentLevel.toString();
+    window.location.hash = "#/" + gameId + "/" + levelId;
 });
 
+window.addEventListener('hashchange', function() {
+    console.log(`[DEBUG] Hash changed: ${window.location.hash}`);
+}, false);
 
+nextLevelButton.addEventListener('click', () => {
+    console.log(`[DEBUG] nextLevelButton clicked. Current level: ${currentLevel}`);
 
+    if (currentLevel < maxLevels - 1) {
+        currentLevel++;
+    } else {
+        // Если на последнем уровне, переключаемся на первый уровень.
+        currentLevel = 0;
+    }
+  console.log(`[DEBUG] New current level: ${currentLevel}`);
+
+    setLevelHandlersAndLoadData();
+  setupFirebaseListeners();
+
+    // Обновляем URL
+    levelId = currentLevel.toString();
+    window.location.hash = "#/" + gameId + "/" + levelId;
+});
 
 
 
@@ -520,49 +563,46 @@ function isDrawingComplete() {
     if (!currentTask || !currentTask.coordinates) {
         return false;
     }
-    for (let coord of currentTask.coordinates) {
+    return currentTask.coordinates.every(coord => {
         const [letter, number] = splitCoordinate(coord);
         const cellIndex = getCellIndex(letter, number);
         const cell = board.querySelector(`[data-index="${cellIndex}"]`);
-        if (!cell.classList.contains('taken')) {
-            return false;
-        }
-    }
-    return true;
+        return cell.classList.contains('taken');
+    });
 }
 
- copyCellsToGame(levelId);
 
+
+copyCellsToGame(levelId);
 async function loadDrawingForCurrentGame(levelId) {
     console.log("Загрузка рисунка для текущей игры началась");
-   copyCellsToGame(levelId);
     console.log("loadDrawingForCurrentGame вызвана с levelId:", levelId);
 
-    const levelRef = database.ref('games/' + gameId + '/levels/' + levelId + '/cells');
+    if (levelId !== undefined && levelId !== null) {
+        const levelRef = database.ref('games/' + gameId + '/levels/' + levelId + '/cells');
 
-    try {
-        console.log("Попытка получения данных из Firebase...");
-        let cells = await fetchCellsFromFirebase(levelRef);
+        try {
+            console.log("Попытка получения данных из Firebase...");
+            const snapshot = await levelRef.once('value');
+            const cells = snapshot.val();
 
-        if (!cells || Object.keys(cells).length === 0) {
-            console.log("Ячейки отсутствуют, начинаем процесс копирования...");
-            await copyCellsToGame(levelId);
-            // После копирования, дождитесь загрузки данных
-            cells = await levelRef.once('value').then(snap => snap.val());
+            if (cells && Object.keys(cells).length > 0) {
+                // Если уровень имеет предзаполненные данные, отобразим их
+                console.log(`Загружен рисунок для уровня ${levelId}:`, cells);
+               // displayBoard(cells);
+            } else {
+                console.log(`Для уровня ${levelId} нет предзаполненных данных.`);
+                clearBoard();  // Добавьте эту строку
+            }
+
+            console.log("Загрузка рисунка для текущей игры завершилась");
+        } catch (error) {
+            console.error("Ошибка при загрузке рисунка:", error);
         }
-
-        console.log(`Загружен рисунок для уровня ${currentLevel}:`, cells);
-        displayBoard(cells);
-        console.log("Загрузка рисунка для текущей игры завершилась");
-
-    } catch (error) {
-        console.error("Ошибка при загрузке рисунка:", error);
+    } else {
+        console.log("Уровень не определен, рисунок не будет загружен.");
     }
 }
-
-
-
-
 
 
 
@@ -576,16 +616,18 @@ function displayBoard(cells) {
 
     allCells.forEach(cell => {
         const index = cell.dataset.index;
-      if (cells[index]) {
-          console.log(`Обработка ячейки с индексом ${index}. Состояние в данных:`, cells[index]);
-      }
+        const isTakenInNewState = cells[index];  // новое состояние ячейки
+        const isTakenCurrently = cell.classList.contains('taken');  // текущее состояние ячейки
 
-
-        if (cells[index]) {
-            cell.classList.add('taken');
-            takenCount++;
-        } else {
-            cell.classList.remove('taken');
+        if (isTakenInNewState !== isTakenCurrently) {  // если состояния различны
+            if (isTakenInNewState) {
+                cell.classList.add('taken');
+                takenCount++;
+            } else {
+                cell.classList.remove('taken');
+            }
+        } else if (isTakenInNewState) {
+            takenCount++;  // если состояния совпадают и ячейка "taken", увеличиваем счетчик
         }
     });
 
@@ -599,36 +641,40 @@ function displayBoard(cells) {
 
 
 
+
 function clearBoard() {
-    console.log("Запуск функции clearBoard");
+    console.log("Очищаем доску");
     const allCells = document.querySelectorAll('.cell');
     allCells.forEach(cell => {
-        cell.className = 'cell';
+        cell.className = 'cell'; // это сбросит все классы ячейки к 'cell'
     });
-    console.log("Завершение функции clearBoard");
 }
 
 
 
-
-function loadDrawingForCurrentLevel() {
+async function loadDrawingForCurrentLevel() {
     const levelId = currentLevel;
-    console.log("Запуск функции loadDrawingForCurrentLevel с ID уровня:", levelId);
-
     const levelRef = database.ref(`games/${gameId}/levels/${levelId}/cells`);
-    levelRef.off('value');
 
-    levelRef.once('value').then(snapshot => {
-        const cells = snapshot.val() || {};
-        console.log(`Получены данные для уровня ${levelId} из loadDrawingForCurrentLevel:`, cells);
-        displayBoard(cells);
-        updateTaskPanel();
-        console.log("Завершение функции loadDrawingForCurrentLevel");
-    }).catch(error => {
-        console.error("Ошибка в функции loadDrawingForCurrentLevel:", error);
-    });
+    try {
+        // Сначала попытаемся скопировать данные
+        await copyCellsToGame(levelId);
+
+        // Затем попытаемся загрузить рисунок
+        const cells = await levelRef.once('value').then(snapshot => snapshot.val());
+
+        console.log(`Загружен рисунок для уровня ${levelId}:`, cells);
+
+        if (cells) {
+            displayBoard(cells);
+            updateTaskPanel();
+        }
+
+        // Отправляем изменения в реальном времени в Firebase Realtime Database
+    } catch (error) {
+        console.error("Ошибка при загрузке рисунка для уровня:", error);
+    }
 }
-
 
 
 updateLevelDisplay();
@@ -667,7 +713,7 @@ zoomInButton.addEventListener('click', function() {
     if (window.innerWidth < 768) {
         document.documentElement.style.setProperty('--cell-size', '8vw');
     } else {
-        document.documentElement.style.setProperty('--cell-size', '2.5vw');
+        document.documentElement.style.setProperty('--cell-size', '4vw');
     }
     document.getElementById('board-container').style.height = board.scrollHeight + "px";  // Устанавливаем высоту board-container равной высоте доски
   verticalCoordinates.style.display = 'grid';
@@ -699,22 +745,26 @@ zoomOutButton.addEventListener('click', function() {
 
 // S H A D O W   S C R O L L
 function checkScrollRequired() {
-    const taskCoordinates = document.getElementById('taskCoordinates');
+  const taskCoordinates = document.getElementById("taskCoordinates");
+  const shadowContainer = taskCoordinates.parentElement;
+  // Проверяем, требуется ли прокрутка
+  if (taskCoordinates.scrollWidth <= taskCoordinates.clientWidth) {
+      shadowContainer.classList.add("no-left-shadow");
+      shadowContainer.classList.add("no-right-shadow");
+      return;  // Выходим из функции, так как прокрутка не требуется
+  }
 
-    // Проверяем, нужна ли тень слева
-    if (taskCoordinates.scrollLeft > 0) {
-        taskCoordinates.classList.add('scrolling-required-left');
-    } else {
-        taskCoordinates.classList.remove('scrolling-required-left');
-    }
+  if (taskCoordinates.scrollLeft === 0) {
+      shadowContainer.classList.add("no-left-shadow");
+  } else {
+      shadowContainer.classList.remove("no-left-shadow");
+  }
 
-    // Проверяем, нужна ли тень справа
-  if (taskCoordinates.scrollLeft + taskCoordinates.clientWidth + 1 < taskCoordinates.scrollWidth) {
-
-        taskCoordinates.classList.add('scrolling-required-right');
-    } else {
-        taskCoordinates.classList.remove('scrolling-required-right');
-    }
+  if (taskCoordinates.scrollLeft + taskCoordinates.clientWidth >= taskCoordinates.scrollWidth) {
+      shadowContainer.classList.add("no-right-shadow");
+  } else {
+      shadowContainer.classList.remove("no-right-shadow");
+  }
 }
 
 
@@ -723,10 +773,20 @@ function checkScrollRequired() {
 
 // Вызывайте эту функцию при загрузке страницы и при любых изменениях размера окна.
 window.addEventListener('load', function() {
-    setTimeout(checkScrollRequired, 1500); // задержка в 100 миллисекунд
+    setTimeout(checkScrollRequired, 1000); // задержка в 100 миллисекунд
 });
 window.addEventListener('resize', checkScrollRequired);
 taskCoordinates.addEventListener('scroll', checkScrollRequired);
+
+document.addEventListener("DOMContentLoaded", function() {
+  console.log("[DEBUG] DOMContentLoaded event fired.");
+
+    checkScrollRequired(); // Вызываем функцию после загрузки контента
+
+    // Добавляем слушатели событий для обновления теней при изменении размера окна и скролле.
+    window.addEventListener('resize', checkScrollRequired);
+    taskCoordinates.addEventListener('scroll', checkScrollRequired);
+});
 
 
 function checkLevelCompletion() {
@@ -734,9 +794,10 @@ function checkLevelCompletion() {
     // Проверяем завершенность текущего уровня
     database.ref('games/' + gameId + '/completedLevels/' + currentLevel).once('value').then(snapshot => {
 
-       
+
     });
 }
+
 
 
 async function copyCellsToGame(levelId) {
@@ -757,7 +818,7 @@ async function copyCellsToGame(levelId) {
         const cellsState = snapshot.val();
 
         if (!cellsState) {
-            console.error("Ошибка: ячейки отсутствуют в исходных данных!");
+            console.warn(`Предзаполненные данные для уровня ${levelId} отсутствуют. Продолжаем без копирования.`);
             return;
         }
 
@@ -776,20 +837,3 @@ async function copyCellsToGame(levelId) {
         console.error("Ошибка при копировании ячеек:", error);
     }
 }
-
-
-
-
-async function fetchCellsFromFirebase(ref) {
-    console.log("fetchCellsFromFirebase начала работу");
-    try {
-        let data = await ref.once('value').then(snap => snap.val());
-        console.log("fetchCellsFromFirebase получила данные:", data);
-        return data;
-    } catch (error) {
-        console.error("Ошибка в fetchCellsFromFirebase:", error);
-        return null;
-    }
-}
-
-
