@@ -44,7 +44,7 @@ body, html {
     height: var(--cell-size);
    /* border: 1px solid #cfcfcf; */
   background-color: #ffffff;
-  
+
 }
 
 .cell:hover {
@@ -60,7 +60,7 @@ body, html {
 #taskPanel.hidden {
     display: none;
 }
-
+ 
 
 /* Стили координат */
 .highlighted-coordinate {
@@ -88,7 +88,7 @@ body, html {
     flex-direction: column;
     height: calc(150 * var(--cell-size));
     align-items: center;
-  
+
 }
 
 
@@ -98,11 +98,11 @@ body, html {
     top: 0;
     width: auto;
     height: var(--cell-size);
-   
+
     align-items: center;
     justify-content: center;
     padding-left: var(--cell-size);
-   
+
 }
 
 /* Стили кнопок */
@@ -175,7 +175,7 @@ body, html {
     overflow-y: auto;
     height: 100vh;
     font-size: 12px;
-  
+
   }
 
 }
@@ -218,7 +218,7 @@ body, html {
   margin-right: 2px;
     font-size: 14px;
   }
-  
+
     #vertical-coordinates, #horizontal-coordinates {
         font-size:12px;
     }
@@ -238,7 +238,7 @@ body, html {
     }
 
 
-  
+
 
 
 }
@@ -264,14 +264,7 @@ body, html {
   justify-content: space-between;
 }
 
-#taskCoordinates {
-    flex-grow: 1;
-    overflow-x: overlay;
-  overflow-x: auto; 
-  width: 60%;  
-  white-space: nowrap;
 
-}
 
 
 
@@ -344,14 +337,13 @@ gap: 10px;
 }
 
 
-
-.scrolling-required-left {
-    border-left: 8px double #dfd7d7;
+/* Для контейнера */
+#menuContainer {
+    display: flex;
+    align-items: center;
+    /* Оставляем остальные стили без изменений */
 }
 
-.scrolling-required-right {
-    border-right: 8px double #dfd7d7;
-}
 
 .zoom-buttons {
     position: fixed;   /* фиксируем позицию элемента */
@@ -372,7 +364,7 @@ gap: 10px;
    grid-gap: 0px;
   background: #ffffff;
   border: none;
-  
+
 }
 
 
@@ -398,4 +390,57 @@ gap: 10px;
     width: 80%;
     max-width: 500px;
     text-align: center;
+}
+
+
+.navigation-container {
+    display: flex;
+    align-items: center;  // Выравнивание элементов по вертикали
+}
+
+
+
+#taskCoordinates {
+  position: relative; /* Для абсолютного позиционирования дочерних элементов */
+    width: 100%;
+    height: 100%;
+  position: relative;
+      flex-grow: 1;
+      overflow-x: overlay;
+    overflow-x: auto; 
+    width: 100%;  
+    white-space: nowrap;
+
+}.shadow-container {
+    position: relative;
+    overflow: hidden; /* Это скроет псевдо-элементы, выходящие за пределы контейнера */
+  display: inline-grid;
+}
+
+.shadow-container::before,
+.shadow-container::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    z-index: 10;
+}
+
+.shadow-container::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(0,0,0,0.2), rgba(0,0,0,0));
+}
+
+.shadow-container::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(0,0,0,0.2), rgba(0,0,0,0));
+}
+
+.shadow-container.no-left-shadow::before {
+    width: 0;
+}
+
+.shadow-container.no-right-shadow::after {
+    display: none;
 }
