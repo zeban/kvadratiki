@@ -11,6 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js">
 </script>
+  
 
 
 
@@ -23,19 +24,24 @@
       <!-- Кнопки -->
 
   <div id="menuContainer">
+    <div class="navigation-container">
       <div class="nextprev">
           <button id="prevLevel" class="custom-button2">←</button>
           <span id="levelNumber"> ⛄︎ </span>
-          <button id="nextLevel" class="custom-button2" data-tooltip="Завершите этот уровень для доступа к следующему 😉">→</button>
+          <button id="nextLevel" class="custom-button2">→</button>
       </div>
-
-      <div id="taskCoordinates"></div>
-
+   
+    <div class="shadow-container">
+      <div id="taskCoordinates" class="scrollable-content">
+      <div class="shadow-left"></div>
+      <div class="shadow-right"></div></div>
+  </div>
+    </div>
       <div class="mainbuttons">
 
 
           <button id="shareButton" class="custom-button">Играть с друзьями</button>
-          <a id="newGameButton" class="custom-button" target="_blank">New Game</a>
+          <a id="newGameButton" class="custom-button" target="_blank">Новая игра</a>
       </div>
   </div>
 
@@ -53,9 +59,14 @@
           <div class="board-wrapper">
               <div id="vertical-coordinates"></div>
               <div id="board"></div>
+         
           </div>
+        <span class="sign"> Yura Bruskov </span>
+      
       </div>
+   
   </div>
+
 
   <!-- Модальное окно -->
   <div id="modal" style="display: none;">
