@@ -743,50 +743,58 @@ zoomOutButton.addEventListener('click', function() {
 
 
 
+
 // S H A D O W   S C R O L L
-function checkScrollRequired() {
-  const taskCoordinates = document.getElementById("taskCoordinates");
-  const shadowContainer = taskCoordinates.parentElement;
-  // Проверяем, требуется ли прокрутка
-  if (taskCoordinates.scrollWidth <= taskCoordinates.clientWidth) {
-      shadowContainer.classList.add("no-left-shadow");
-      shadowContainer.classList.add("no-right-shadow");
-      return;  // Выходим из функции, так как прокрутка не требуется
-  }
+// Функция для проверки положения скролла и управления тенями
+function handleScroll() {
+    const taskCoordinates = document.getElementById("taskCoordinates");
+    const shadowContainer = taskCoordinates.parentElement;
+    // Проверяем, требуется ли прокрутка
+    if (taskCoordinates.scrollWidth <= taskCoordinates.clientWidth) {
+        shadowContainer.classList.add("no-left-shadow");
+        shadowContainer.classList.add("no-right-shadow");
+        return;  // Выходим из функции, так как прокрутка не требуется
+    }
 
-  if (taskCoordinates.scrollLeft === 0) {
-      shadowContainer.classList.add("no-left-shadow");
-  } else {
-      shadowContainer.classList.remove("no-left-shadow");
-  }
+    if (taskCoordinates.scrollLeft === 0) {
+        shadowContainer.classList.add("no-left-shadow");
+    } else {
+        shadowContainer.classList.remove("no-left-shadow");
+    }
 
-  if (taskCoordinates.scrollLeft + taskCoordinates.clientWidth >= taskCoordinates.scrollWidth) {
-      shadowContainer.classList.add("no-right-shadow");
-  } else {
-      shadowContainer.classList.remove("no-right-shadow");
-  }
+    if (taskCoordinates.scrollLeft + taskCoordinates.clientWidth >= taskCoordinates.scrollWidth) {
+        shadowContainer.classList.add("no-right-shadow");
+    } else {
+        shadowContainer.classList.remove("no-right-shadow");
+    }
 }
 
-
-
-
-
-// Вызывайте эту функцию при загрузке страницы и при любых изменениях размера окна.
-window.addEventListener('load', function() {
-    setTimeout(checkScrollRequired, 1000); // задержка в 100 миллисекунд
-});
-window.addEventListener('resize', checkScrollRequired);
-taskCoordinates.addEventListener('scroll', checkScrollRequired);
-
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[DEBUG] DOMContentLoaded event fired.");
+    const taskCoordinates = document.getElementById("taskCoordinates");
+    const shadowContainer = taskCoordinates.parentElement; // Получаем родительский элемент (.shadow-container)
 
-    checkScrollRequired(); // Вызываем функцию после загрузки контента
+    // Начало добавленного кода
+    const observer = new MutationObserver(function(mutationsList, observer) {
+        for(let mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                handleScroll();
+            }
+        }
+    });
 
-    // Добавляем слушатели событий для обновления теней при изменении размера окна и скролле.
-    window.addEventListener('resize', checkScrollRequired);
-    taskCoordinates.addEventListener('scroll', checkScrollRequired);
+    observer.observe(taskCoordinates, { childList: true });
+    // Конец добавленного кода
+
+    // Инициализируем тени при загрузке страницы
+    handleScroll();
+
+    // Добавляем слушатель событий на прокрутку
+    taskCoordinates.addEventListener("scroll", handleScroll);
+
+    // Добавляем задержку для повторной проверки положения скролла
+    setTimeout(handleScroll, 1000);  // проверка через 1 секунду
 });
+
 
 
 function checkLevelCompletion() {
