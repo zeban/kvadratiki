@@ -15,7 +15,7 @@ function updateBoardFromFirebase(data) {
 
 // === Настройки Firebase ===
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY_PLACEHOLDER", 
+    apiKey: "FIREBASE_API_KEY", 
     authDomain: "kletkun.firebaseapp.com",
     databaseURL: "https://kletkun-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "kletkun",
