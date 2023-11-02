@@ -317,6 +317,8 @@ database.ref(`games/${gameId}/levels/${currentLevel}/drawing`).on('child_removed
 // Обработка кнопок "Поделиться" и "Новая игра"
 const shareButton = document.getElementById('shareButton');
 shareButton.addEventListener('click', function() {
+    ym(95445197,'reachGoal','shareButton')
+    
     if (navigator.share) {
         navigator.share({
             title: 'Поделитесь игрой!',
@@ -340,6 +342,7 @@ shareButton.addEventListener('click', function() {
     }
 });
 newGameButton.addEventListener('click', function(e) {
+    ym(95445197,'reachGoal','newgame')
     const newGameId = Date.now().toString();
     const newLevelId = "0";  // Устанавливаем ID уровня на 0 для новой игры
     const newGameUrl = window.location.origin + window.location.pathname + '#/' + newGameId + '/' + newLevelId;
@@ -494,7 +497,9 @@ console.log("Type of currentLevel:", typeof currentLevel);
 const prevLevelButton = document.getElementById('prevLevel');
 const nextLevelButton = document.getElementById('nextLevel');
 prevLevelButton.addEventListener('click', () => {
-    console.log(`[DEBUG] prevLevelButton clicked. Current level: ${currentLevel}`);
+
+        ym(95445197, 'reachGoal', 'prevLevelClick');
+console.log(`[DEBUG] prevLevelButton clicked. Current level: ${currentLevel}`);
 
     if (currentLevel > 0) {
         currentLevel--;
@@ -517,6 +522,8 @@ window.addEventListener('hashchange', function() {
 }, false);
 
 nextLevelButton.addEventListener('click', () => {
+        ym(95445197, 'reachGoal', 'nextLevelClick');
+
     console.log(`[DEBUG] nextLevelButton clicked. Current level: ${currentLevel}`);
 
     if (currentLevel < maxLevels - 1) {
