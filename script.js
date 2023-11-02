@@ -1,17 +1,6 @@
 
 let currentUserLevel = 0; // Default starting level, can be changed based on user's progress
 
-// Update the user level when the user selects a new level
-
-
-// When updating the board from Firebase updates
-function updateBoardFromFirebase(data) {
-    const updateLevel = data.level; // Assuming the update has a 'level' property
-    if (updateLevel === currentUserLevel) {
-        // Only update the board if the levels match
-        // ... your logic to update the board
-    }
-}
 
 // === Настройки Firebase ===
 const firebaseConfig = {
