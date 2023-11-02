@@ -1,3 +1,2 @@
 - name: Replace API Key in JavaScript
-  run: |
-    sed -i 's/FIREBASE_API_KEY/${{ secrets.FIREBASE_API_KEY }}/' /spcript.js
+  run: sed -i "s/YOUR_API_KEY_PLACEHOLDER/${{ secrets.FIREBASE_API_KEY }}/" ./script.js
