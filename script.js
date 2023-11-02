@@ -713,7 +713,7 @@ zoomInButton.addEventListener('click', function() {
     if (window.innerWidth < 768) {
         document.documentElement.style.setProperty('--cell-size', '8vw');
     } else {
-        document.documentElement.style.setProperty('--cell-size', '4vw');
+        document.documentElement.style.setProperty('--cell-size', '2.5vw');
     }
     document.getElementById('board-container').style.height = board.scrollHeight + "px";  // Устанавливаем высоту board-container равной высоте доски
   verticalCoordinates.style.display = 'grid';
