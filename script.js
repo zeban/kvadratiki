@@ -187,6 +187,8 @@ function setupFirebaseListeners() {
 // Функция для обработки кликов по ячейкам
 // Функция для обработки кликов по ячейкам
 function handleCellClick(cell) {
+      // Отправляем событие в Яндекс.Метрику
+  ym(95445197, 'reachGoal', 'cellClick');
   console.log('[DEBUG] handleCellClick called');
   drawingChanged = true;
   const index = cell.dataset.index;
@@ -218,6 +220,7 @@ function handleCellClick(cell) {
       database.ref('games/' + gameId + '/completed').remove();
     }
   });
+  
 }
 
 
