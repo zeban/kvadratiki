@@ -1,4 +1,4 @@
-
+    
 let currentUserLevel = 0; // Default starting level, can be changed based on user's progress
 
 
@@ -88,7 +88,7 @@ database.ref('games/' + gameId + '/completed').on('value', snapshot => {
     const completionTime = snapshot.val();
     // Если есть новое уведомление, показываем конфети
     if (completionTime && completionTime !== lastCompletionTime) {
-       
+
         lastCompletionTime = completionTime;  // обновляем время последнего уведомления
     }
 });
@@ -186,30 +186,36 @@ function setupFirebaseListeners() {
 
 // Функция для обработки кликов по ячейкам
 // Функция для обработки кликов по ячейкам
-function handleCellClick(cell) {
-      // Отправляем событие в Яндекс.Метрику
-  ym(95445197, 'reachGoal', 'cellClick');
-  console.log('[DEBUG] handleCellClick called');
-  drawingChanged = true;
-  const index = cell.dataset.index;
-  const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
+let playerMoves = [];
+    // Глобальный массив для хранения индексов удаленных клеток
+    let removedCells = [];
 
-  // Проверяем текущее состояние клетки в базе данных
-  cellRef.once('value').then(snapshot => {
-    const isTaken = snapshot.val();
-    console.log(`[DEBUG] Cell at index ${index} isTaken: ${isTaken}`);
+function handleCellClick(cell, isBotClick = false) {
+        console.log('[DEBUG] handleCellClick called');
+        drawingChanged = true;
+        const index = cell.dataset.index;
+        const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
 
-    // Переключаем состояние ячейки в зависимости от значения isTaken
-    if (isTaken) {
-      cell.classList.remove('taken');
-      cellRef.remove();
-    } else {
-      cell.classList.add('taken');
-      cellRef.set(true);
-    }
+        // Проверяем текущее состояние клетки в базе данных
+        cellRef.once('value').then(snapshot => {
+            const isTaken = snapshot.val();
+            console.log(`[DEBUG] Cell at index ${index} isTaken: ${isTaken}`);
 
-    drawingChanged = false;
-    displayCoordinates();
+            // Переключаем состояние ячейки в зависимости от значения isTaken
+            if (isTaken) {
+                cell.classList.remove('taken');
+                cellRef.remove();
+                if (!isBotClick) {
+                    // Если ход не от бота, добавляем индекс клетки в массив удаленных
+                    removedCells.push(parseInt(index));
+                }
+            } else {
+                cell.classList.add('taken');
+                cellRef.set(true);
+            }
+
+            drawingChanged = false;
+            displayCoordinates();
 
     if (isDrawingJustCompleted()) {
       showConfetti();
@@ -220,8 +226,26 @@ function handleCellClick(cell) {
       database.ref('games/' + gameId + '/completed').remove();
     }
   });
-  
+  // Если клик совершил игрок, обновляем историю его ходов
+  if (!isBotClick) {
+    // Добавляем индекс текущей клетки в массив playerMoves
+    const cellIndex = getCellIndexFromCell(cell);
+    playerMoves.push(cellIndex);
+
+    // Если в массиве более двух элементов, удаляем самый старый ход
+    if (playerMoves.length > 2) {
+      playerMoves.shift(); // Удаляем первый (самый старый) элемент массива
+    }
+  }
+  // Если бот активен, делаем ход после клика пользователя, но только если это не клик бота
+  if (isBotActive && !isBotClick) { // Добавленная проверка на isBotClick
+    // Получаем индекс последней кликнутой клетки
+    const cellIndex = getCellIndexFromCell(cell);
+    // Вызываем функцию для хода бота
+    setTimeout(() => botMakeMove(cellIndex), 1); // задержка для имитации "раздумий" бота
+  }
 }
+
 
 
 // Добавление слушателя кликов по доске
@@ -241,27 +265,32 @@ setupFirebaseListeners();
 
 //Отмечаем выполненные координаты
 function checkTaskCompletion() {
-   if (drawingChanged) return false;
-    let allCoordsCompleted = true;
-    currentTask.coordinates.forEach((coord, index) => {
-        const [letter, number] = splitCoordinate(coord); // Разделяем координату
-        const cellIndex = getCellIndex(letter, number); // Получаем индекс клетки
-        const cell = board.querySelector(`[data-index="${cellIndex}"]`);
-        const coordElement = taskCoordinates.children[index];
-        if (coordElement) {
-            if (cell.classList.contains('taken')) {
-              coordElement.classList.add('highlighted');
-              coordElement.classList.remove('bhighlighted');
-            } else {
-              coordElement.classList.remove('highlighted');
-              coordElement.classList.add('bhighlighted');
-                allCoordsCompleted = false;
-            }
-        }
-    });
-    return allCoordsCompleted;
+  if (drawingChanged) return false;
+  let allCoordsCompleted = true;
 
+  currentTask.coordinates.forEach((coord, index) => {
+    const [letter, number] = splitCoordinate(coord); // Разделяем координату
+    const cellIndex = getCellIndex(letter, number); // Получаем индекс клетки
+    const cell = board.querySelector(`[data-index="${cellIndex}"]`);
+    const coordElement = taskCoordinates.children[index];
+
+    if (coordElement) {
+      if (cell.classList.contains('taken')) {
+        coordElement.classList.add('highlighted');
+        coordElement.classList.remove('bhighlighted');
+        coordElement.classList.add('fade-out'); // Добавляем класс .hidden для плавного исчезновения
+      } else {
+        coordElement.classList.remove('highlighted');
+        coordElement.classList.remove('fade-out');
+        coordElement.classList.add('bhighlighted');
+        allCoordsCompleted = false;
+      }
+    }
+  });
+
+  return allCoordsCompleted;
 }
+
 
 function splitCoordinate(coord) {
     const letter = coord.match(/[A-Z]+/)[0];
@@ -317,8 +346,8 @@ database.ref(`games/${gameId}/levels/${currentLevel}/drawing`).on('child_removed
 // Обработка кнопок "Поделиться" и "Новая игра"
 const shareButton = document.getElementById('shareButton');
 shareButton.addEventListener('click', function() {
-    ym(95445197,'reachGoal','shareButton')
-    
+   // ym(95445197,'reachGoal','shareButton')//
+
     if (navigator.share) {
         navigator.share({
             title: 'Поделитесь игрой!',
@@ -342,7 +371,7 @@ shareButton.addEventListener('click', function() {
     }
 });
 newGameButton.addEventListener('click', function(e) {
-    ym(95445197,'reachGoal','newgame')
+  //  ym(95445197,'reachGoal','newgame')//
     const newGameId = Date.now().toString();
     const newLevelId = "0";  // Устанавливаем ID уровня на 0 для новой игры
     const newGameUrl = window.location.origin + window.location.pathname + '#/' + newGameId + '/' + newLevelId;
@@ -374,7 +403,7 @@ function markLevelAsCompleted() {
     database.ref('games/' + gameId + '/completedLevels/' + currentLevel).once('value').then(snapshot => {
         if (!snapshot.val()) {
             database.ref('games/' + gameId + '/completedLevels/' + currentLevel).set(true);
-     
+
         }
     });
 }
@@ -425,7 +454,7 @@ async function loadLevel(levelId) {
             // Вызываем функцию для обновления текущего уровня пользователя
           console.log("Type of currentLevel:", typeof currentLevel);
 
-          
+
         } else {
             console.error('Ошибка: данные уровня не содержат задания.');
         }
@@ -452,7 +481,7 @@ async function setLevelHandlersAndLoadData() {
     cellsRef.off();
 
     // Отключаем слушатели для drawing
-  
+
     drawingRef.off('child_changed', handleCellUpdate);
     drawingRef.off('child_added', handleCellUpdate);
     drawingRef.off('child_removed');
@@ -498,7 +527,7 @@ const prevLevelButton = document.getElementById('prevLevel');
 const nextLevelButton = document.getElementById('nextLevel');
 prevLevelButton.addEventListener('click', () => {
 
-        ym(95445197, 'reachGoal', 'prevLevelClick');
+       // ym(95445197, 'reachGoal', 'prevLevelClick');//
 console.log(`[DEBUG] prevLevelButton clicked. Current level: ${currentLevel}`);
 
     if (currentLevel > 0) {
@@ -522,7 +551,7 @@ window.addEventListener('hashchange', function() {
 }, false);
 
 nextLevelButton.addEventListener('click', () => {
-        ym(95445197, 'reachGoal', 'nextLevelClick');
+       // ym(95445197, 'reachGoal', 'nextLevelClick');//
 
     console.log(`[DEBUG] nextLevelButton clicked. Current level: ${currentLevel}`);
 
@@ -844,3 +873,128 @@ async function copyCellsToGame(levelId) {
         console.error("Ошибка при копировании ячеек:", error);
     }
 }
+
+// Переменная для отслеживания состояния бота
+let isBotActive = false;
+
+// Функция для переключения состояния бота
+function toggleBot() {
+    isBotActive = !isBotActive;
+    const botToggleButton = document.getElementById('botToggle');
+    botToggleButton.textContent = isBotActive ? '🤖 ON' : '🤖 OFF';
+}
+
+// Обработчик для кнопки переключения бота
+document.getElementById('botToggle').addEventListener('click', toggleBot);
+
+
+
+// Функция для получения индекса из объекта клетки
+function getCellIndexFromCell(cell) {
+    // Возможно, вам нужно будет адаптировать эту функцию под вашу логику получения индекса
+    return cell.dataset.index;
+}
+function indexToCoords(index) {
+    const x = index % cellsCount; // Получаем координату X, используя остаток от деления
+    const y = Math.floor(index / cellsCount); // Получаем координату Y, используя целочисленное деление
+    return {x, y};
+}
+
+// Функция для выбора случайной клетки ботом
+function botMakeMove(lastClickedCellIndex) {
+    // Преобразуем индекс в координаты
+    const lastClickedCellCoords = indexToCoords(lastClickedCellIndex);
+
+    // Выбираем случайный индекс клетки
+    let botCellIndex;
+    let attempts = 0;
+    do {
+        botCellIndex = getRandomCellIndex(lastClickedCellCoords);
+        attempts++;
+        // Предотвратим потенциальный бесконечный цикл
+        if (attempts > 100) {
+            console.error("Can't find a valid move for the bot.");
+            return;
+        }
+    } while (removedCells.includes(botCellIndex));
+
+    // Имитируем клик по клетке
+    const botCell = board.querySelector(`[data-index="${botCellIndex}"]`);
+    if (botCell && !botCell.classList.contains('taken')) {
+        handleCellClick(botCell, true); // Передаем true, чтобы указать, что это ход бота
+    }
+}
+
+
+
+function getRandomCellIndex(coords) {
+  // Переменные для координат и индекса клетки бота
+  let botCellIndex;
+  let botCell;
+
+  // Проверяем, достаточно ли ходов сделал игрок для определения направления
+  if (playerMoves.length >= 2) {
+    // Получаем координаты двух последних ходов
+    const [secondLastMove, lastMove] = playerMoves.slice(-2).map(indexToCoords);
+    // Вычисляем направление между последними двумя ходами
+    const direction = {
+      x: lastMove.x - secondLastMove.x,
+      y: lastMove.y - secondLastMove.y
+    };
+
+    // Нормализуем направление (делаем шаг равным 1 клетке)
+    if (direction.x !== 0) direction.x /= Math.abs(direction.x);
+    if (direction.y !== 0) direction.y /= Math.abs(direction.y);
+
+    // Пытаемся сделать ход в том же направлении
+    let nextX = lastMove.x + direction.x;
+    let nextY = lastMove.y + direction.y;
+
+    // Проверяем, что следующая клетка в пределах поля и свободна
+    if (isCellFreeAndValid(nextX, nextY)) {
+      botCellIndex = nextY * cellsCount + nextX;
+      return botCellIndex;
+    } else {
+      // Если клетка занята или за пределами поля, пытаемся сделать ход по горизонтали или вертикали
+      nextX = lastMove.x + (direction.x === 0 ? 1 : 0);
+      nextY = lastMove.y + (direction.y === 0 ? 1 : 0);
+      if (isCellFreeAndValid(nextX, nextY)) {
+        botCellIndex = nextY * cellsCount + nextX;
+        return botCellIndex;
+      }
+    }
+  }
+
+  // Если направление не определено или не удалось продолжить линию, делаем случайный ход вблизи последнего хода игрока
+do {
+        const dx = Math.floor(Math.random() * (maxDistance - minDistance + 1)) + minDistance;
+        const dy = Math.floor(Math.random() * (maxDistance - minDistance + 1)) + minDistance;
+
+        let randomX = coords.x + dx;
+        let randomY = coords.y + dy;
+
+        botCellIndex = randomY * cellsCount + randomX;
+
+        // Проверяем, что клетка свободна, не удалена и находится в пределах поля
+        botCell = board.querySelector(`[data-index="${botCellIndex}"]`);
+    } while (
+        randomX < 0 || randomY < 0 ||
+        randomX >= cellsCount || randomY >= cellsCount ||
+        !botCell || botCell.classList.contains('taken') ||
+        removedCells.includes(botCellIndex)
+    );
+
+    return botCellIndex;
+}
+
+// Вспомогательная функция для проверки, свободна ли клетка и находится ли она в пределах поля
+function isCellFreeAndValid(x, y) {
+  if (x < 0 || y < 0 || x >= cellsCount || y >= cellsCount) {
+    return false;
+  }
+  const cellIndex = y * cellsCount + x;
+  const cell = board.querySelector(`[data-index="${cellIndex}"]`);
+  return cell && !cell.classList.contains('taken');
+}
+
+
