@@ -28,17 +28,17 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 <link rel="manifest" href="/site.webmanifest">
-    
+
     <link rel="stylesheet" href="styles.css">
     <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js">
 </script>
-  
+
 
 
 </head>
 <body>
-    
+
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript" >
    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
@@ -66,7 +66,7 @@
             <span>Уровень</span>  <span id="levelNumber"> ⛄︎ </span>
           <button id="nextLevel" class="custom-button2">→</button>
       </div>
-   
+
     <div class="shadow-container">
       <div id="taskCoordinates" class="scrollable-content">
       <div class="shadow-left"></div>
@@ -75,6 +75,7 @@
     </div>
       <div class="mainbuttons">
 
+        <button id="botToggle" class="custom-button">🤖 OFF</button>
 
           <button id="shareButton" class="custom-button">Играть с друзьями</button>
           <a id="newGameButton" class="custom-button" target="_blank">Новая игра</a>
@@ -95,23 +96,14 @@
           <div class="board-wrapper">
               <div id="vertical-coordinates"></div>
               <div id="board"></div>
-         
+
           </div>
         <span class="sign"> Yura Bruskov </span>
-      
+
       </div>
-   
+
   </div>
 
-
-  <!-- Модальное окно -->
-  <div id="modal" style="display: none;">
-      <div class="modal-content">
-          <h2>Поздравляем!</h2>
-          <p>Вы прошли все уровни. Круто! Порисуйте вместе с друзьями.</p>
-          <button id="returnToFirstLevel">Вернуться к первому уровню</button>
-      </div>
-  </div>
 
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.0/dist/confetti.browser.min.js"></script>
