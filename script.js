@@ -463,6 +463,8 @@ shareButton.addEventListener('click', function() {
 
 
 document.getElementById('newGameButton').addEventListener('click', function(e) {
+       ym(95445197,'reachGoal','newgame')
+
     const newGameId = Date.now().toString();
     const newLevelId = "0"; // Устанавливаем ID уровня на 0 для новой игры
     const newGameUrl = window.location.origin + window.location.pathname + '#/' + newGameId + '/' + newLevelId;
@@ -577,6 +579,8 @@ console.log("Type of currentLevel:", typeof currentLevel);
 const prevLevelButton = document.getElementById('prevLevel');
 const nextLevelButton = document.getElementById('nextLevel');
 prevLevelButton.addEventListener('click', () => {
+    		ym(95445197, 'reachGoal', 'prevLevelClick');
+
     console.log(`[DEBUG] prevLevelButton clicked. Current level: ${currentLevel}`);
     console.log(`[DEBUG] allLevels: ${allLevels.join(", ")}`);
     let currentIndex = allLevels.indexOf(currentLevel);
@@ -595,6 +599,8 @@ window.addEventListener('hashchange', function() {
 }, false);
 
 nextLevelButton.addEventListener('click', () => {
+    		ym(95445197, 'reachGoal', 'nextLevelClick');
+
     // Гарантируем, что все элементы в allLevels являются строками
     let stringifiedLevels = allLevels.map(String);
 
