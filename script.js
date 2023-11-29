@@ -1197,3 +1197,22 @@ zoomableDiv.addEventListener('touchend', () => {
     }
 });
 
+//tooltip
+document.addEventListener("DOMContentLoaded", function() {
+    if (localStorage.getItem("tooltipShown") !== "true") {
+        var tooltip = document.createElement("div");
+        tooltip.classList.add("tooltip-text");
+        tooltip.innerHTML = "Разукрашивайте клетки по координатам или рисуйте что хотите. <br><button class='close-btn'>OK</button>";
+        document.body.appendChild(tooltip);
+
+        var closeButton = tooltip.querySelector(".close-btn");
+        closeButton.addEventListener("click", function() {
+            tooltip.style.display = "none";
+            localStorage.setItem("tooltipShown", "true");
+        });
+
+        tooltip.style.display = "block";
+    }
+});
+
+
