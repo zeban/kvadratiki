@@ -1,10 +1,10 @@
-    
+
 let currentUserLevel = 0; // Default starting level, can be changed based on user's progress
 
 
 // === Настройки Firebase ===
 const firebaseConfig = {
-    apiKey: "FIREBASE_API_KEY", 
+    apiKey: "AIzaSyBRFHQZYMG6QSA1gyw8lHw0gIhVajpvgjU", 
     authDomain: "kletkun.firebaseapp.com",
     databaseURL: "https://kletkun-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "kletkun",
@@ -22,17 +22,20 @@ const totalCells = cellsCount * cellsCount;
 const levelNumberElement = document.getElementById("levelNumber");
 
 function updateLevelDisplay() {
-    levelNumberElement.textContent = currentLevel;
+   // levelNumberElement.textContent = currentLevel;
 }
 const userLevels = {}; // Объект для отслеживания активного уровня для каждого пользователя
 const initialLevelId = 0;
 let [_, gameId, levelId] = window.location.hash.split('/');
 if (levelId !== undefined) {
-  currentLevel = parseInt(levelId, 10);
+  currentLevel = levelId;
 } else {
-  // Если в URL нет levelId, устанавливаем начальный уровень (если это необходимо)
-  currentLevel = 0;
+  currentLevel = initialLevelId.toString();
 }
+if (!levelId) {
+  levelId = initialLevelId.toString(); // Установка начального уровня как строки
+}
+
 let drawingChanged = false;
 
 
@@ -47,6 +50,7 @@ if (!levelId) {
 
 window.location.hash = "#/" + gameId + "/" + levelId;
 
+let wasTaskCompleted = false;
 
 
 let currentTask = null;
@@ -56,15 +60,41 @@ if (!currentTask) {
     };
 }
 let allCells = [];
-
-
-let maxLevels;
-database.ref('levels').once('value').then(snapshot => {
-    const levels = snapshot.val();
-    maxLevels = Object.keys(levels).length;
-    console.log("Total levels available:", maxLevels);
+let allLevels = [];
+firebase.database().ref('levels').on('value', snapshot => {
+    allLevels = snapshot.val() || [];
+    console.log("Загруженные уровни:", allLevels);
+  allLevels.forEach(levelId => {
+      if (typeof levelId === 'string' || typeof levelId === 'number') {
+          console.log("Инициализация уровня:", levelId);
+          initializeLevelInGame(levelId);
+      } else {
+         
+      }
+  });
 });
+loadAllLevels();
 
+function initializeLevelInGame(levelId) {
+  const levelIdStr = String(levelId);
+  console.log(`Initializing level: ${levelIdStr}, Type: ${typeof levelIdStr}`);
+
+  if (typeof levelIdStr !== 'string' || levelIdStr === 'undefined') {
+      console.error('Invalid levelId:', levelIdStr);
+      return; // Не продолжаем, если levelId не корректен
+  }
+
+  const levelRef = database.ref(`games/${gameId}/levels/${levelIdStr}`);
+    levelRef.once('value').then(snapshot => {
+        if (!snapshot.exists()) {
+            // Если уровень не существует в игре, добавляем его
+            levelRef.set({ /* начальные данные уровня */ });
+            console.log(`Уровень ${levelIdStr} добавлен в игру ${gameId}`);
+        } else {
+            console.log(`Уровень ${levelIdStr} уже существует в игре ${gameId}`);
+        }
+    });
+}
 
 
 // Получение или генерация userId
@@ -79,7 +109,10 @@ if (!userId) {
 
 
 loadLevel(currentLevel);
-
+// После получения данных из Firebase
+allLevels = allLevels.filter(levelId => 
+    typeof levelId === 'string' || typeof levelId === 'number'
+);
 loadDrawingForCurrentGame(currentLevel);
 
 
@@ -180,72 +213,107 @@ function setupFirebaseListeners() {
         }
       });
     }
+     displayCoordinates();
   });
+ 
 }
 // Обработка кликов по доске
 
 // Функция для обработки кликов по ячейкам
 // Функция для обработки кликов по ячейкам
-let playerMoves = [];
-    // Глобальный массив для хранения индексов удаленных клеток
-    let removedCells = [];
+let hasFlashed = false; // Флаг для отслеживания первого мигания
+let userClicks = []; // Теперь это массив для хранения индексов
 
-function handleCellClick(cell, isBotClick = false) {
-        console.log('[DEBUG] handleCellClick called');
-        drawingChanged = true;
-        const index = cell.dataset.index;
-        const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
+async function handleCellClick(cell) {
+    const index = cell.dataset.index;
+    const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
 
-        // Проверяем текущее состояние клетки в базе данных
-        cellRef.once('value').then(snapshot => {
-            const isTaken = snapshot.val();
-            console.log(`[DEBUG] Cell at index ${index} isTaken: ${isTaken}`);
+    let wasTaskCompletedBeforeClick = isTaskCompleted;
 
-            // Переключаем состояние ячейки в зависимости от значения isTaken
-            if (isTaken) {
-                cell.classList.remove('taken');
-                cellRef.remove();
-                if (!isBotClick) {
-                    // Если ход не от бота, добавляем индекс клетки в массив удаленных
-                    removedCells.push(parseInt(index));
-                }
-            } else {
-                cell.classList.add('taken');
-                cellRef.set(true);
-            }
+    await cellRef.transaction(currentState => {
+        return (currentState === true) ? null : true;
+    });
 
-            drawingChanged = false;
-            displayCoordinates();
-
-    if (isDrawingJustCompleted()) {
-      showConfetti();
-      markLevelAsCompleted();
-      checkLevelCompletion();
-      notifyCompletionToOthers();
-    } else if (!isDrawingComplete()) {
-      database.ref('games/' + gameId + '/completed').remove();
+    let taskJustCompleted = checkTaskCompletion();
+    if (taskJustCompleted && !wasTaskCompletedBeforeClick) {
+        showConfetti();
+        markLevelAsCompleted();
+        checkLevelCompletion();
+        notifyCompletionToOthers();
+    } else if (!taskJustCompleted) {
+        database.ref('games/' + gameId + '/completed').remove();
     }
-  });
-  // Если клик совершил игрок, обновляем историю его ходов
-  if (!isBotClick) {
-    // Добавляем индекс текущей клетки в массив playerMoves
-    const cellIndex = getCellIndexFromCell(cell);
-    playerMoves.push(cellIndex);
 
-    // Если в массиве более двух элементов, удаляем самый старый ход
-    if (playerMoves.length > 2) {
-      playerMoves.shift(); // Удаляем первый (самый старый) элемент массива
+    if (botEnabled) {
+        processBotLogic(index);
     }
-  }
-  // Если бот активен, делаем ход после клика пользователя, но только если это не клик бота
-  if (isBotActive && !isBotClick) { // Добавленная проверка на isBotClick
-    // Получаем индекс последней кликнутой клетки
-    const cellIndex = getCellIndexFromCell(cell);
-    // Вызываем функцию для хода бота
-    setTimeout(() => botMakeMove(cellIndex), 1); // задержка для имитации "раздумий" бота
-  }
 }
 
+// Асинхронная функция для обработки логики ботов
+async function processBotLogic(lastUserClickIndex) {
+    userClicks.push(lastUserClickIndex);
+    if (!botTimer) {
+        botTimer = setTimeout(() => {
+            let botClickCount = userClicks.length * 2;
+            botMove(botClickCount, parseInt(userClicks[userClicks.length - 1], 10));
+            botTimer = null;
+            userClicks = [];
+        }, 2000);
+    }
+}
+
+// Функция для обновления DOM после клика по клетке
+function updateDomAfterCellClick() {
+    // Ваш код для обновления DOM
+}
+
+
+
+function flashCompletedCells() {
+    // Добавляем класс 'red-flash' ко всем клеткам задания
+    currentTask.coordinates.forEach(coord => {
+        const [letter, number] = splitCoordinate(coord);
+        const cellIndex = getCellIndex(letter, number);
+        const cell = board.querySelector(`[data-index="${cellIndex}"]`);
+        if (cell) {
+            cell.classList.add('red-flash');
+        }
+    });
+
+    // Удаляем класс 'red-flash' и подсвечиваем кнопку следующего уровня через 1 секунду
+    setTimeout(() => {
+        currentTask.coordinates.forEach(coord => {
+            const [letter, number] = splitCoordinate(coord);
+            const cellIndex = getCellIndex(letter, number);
+            const cell = board.querySelector(`[data-index="${cellIndex}"]`);
+            if (cell) {
+                cell.classList.remove('red-flash');
+            }
+        });
+        hasFlashed = false; // Сброс флага после завершения мигания
+
+        // Подсвечиваем кнопку следующего уровня
+        highlightNextLevelButton();
+    }, 2000);
+}
+
+function highlightNextLevelButton() {
+    const nextLevelButton = document.getElementById('nextLevel');
+    // Первое мигание
+    nextLevelButton.classList.add('highlight-next-level');
+
+    setTimeout(() => {
+        nextLevelButton.classList.remove('highlight-next-level');
+        // Второе мигание после короткой паузы
+        setTimeout(() => {
+            nextLevelButton.classList.add('highlight-next-level');
+
+            setTimeout(() => {
+                nextLevelButton.classList.remove('highlight-next-level');
+            }, 500); // 500 мс для мигания
+        }, 500); // 500 мс пауза перед вторым миганием
+    }, 500); // 500 мс для первого мигания
+}
 
 
 // Добавление слушателя кликов по доске
@@ -264,31 +332,53 @@ setupFirebaseListeners();
 
 
 //Отмечаем выполненные координаты
+let currentCoordIndex = 0; // Глобальный индекс для текущей координаты
+
+let isTaskCompleted = false; // Начальное состояние завершенности задания
+
 function checkTaskCompletion() {
-  if (drawingChanged) return false;
-  let allCoordsCompleted = true;
+    if (drawingChanged) return false;
+    let allCoordsCompleted = true;
+    let foundUnhighlighted = false;
 
-  currentTask.coordinates.forEach((coord, index) => {
-    const [letter, number] = splitCoordinate(coord); // Разделяем координату
-    const cellIndex = getCellIndex(letter, number); // Получаем индекс клетки
-    const cell = board.querySelector(`[data-index="${cellIndex}"]`);
-    const coordElement = taskCoordinates.children[index];
+    currentTask.coordinates.forEach((coord, index) => {
+        const [letter, number] = splitCoordinate(coord);
+        const cellIndex = getCellIndex(letter, number);
+        const cell = board.querySelector(`[data-index="${cellIndex}"]`);
+        const coordElement = taskCoordinates.children[index];
 
-    if (coordElement) {
-      if (cell.classList.contains('taken')) {
-        coordElement.classList.add('highlighted');
-        coordElement.classList.remove('bhighlighted');
-        coordElement.classList.add('fade-out'); // Добавляем класс .hidden для плавного исчезновения
-      } else {
-        coordElement.classList.remove('highlighted');
-        coordElement.classList.remove('fade-out');
-        coordElement.classList.add('bhighlighted');
-        allCoordsCompleted = false;
-      }
+        if (coordElement) {
+            if (cell.classList.contains('taken')) {
+                coordElement.classList.add('highlighted');
+                coordElement.classList.remove('bhighlighted');
+                coordElement.style.display = 'none';
+            } else {
+                coordElement.classList.remove('highlighted');
+                coordElement.classList.add('bhighlighted');
+                allCoordsCompleted = false;
+                if (!foundUnhighlighted) {
+                    currentCoordIndex = index;
+                    foundUnhighlighted = true;
+                }
+                coordElement.style.display = index === currentCoordIndex ? '' : 'none';
+            }
+        }
+    });
+
+    if (!foundUnhighlighted) {
+        currentCoordIndex = 0;
     }
-  });
 
-  return allCoordsCompleted;
+    if (allCoordsCompleted && !isTaskCompleted) {
+        flashCompletedCells();
+        isTaskCompleted = true;
+        // Показываем конфетти только при первом завершении
+        showConfetti(); 
+    } else if (!allCoordsCompleted && isTaskCompleted) {
+        isTaskCompleted = false;
+    }
+
+    return allCoordsCompleted;
 }
 
 
@@ -346,7 +436,7 @@ database.ref(`games/${gameId}/levels/${currentLevel}/drawing`).on('child_removed
 // Обработка кнопок "Поделиться" и "Новая игра"
 const shareButton = document.getElementById('shareButton');
 shareButton.addEventListener('click', function() {
-    ym(95445197,'reachGoal','shareButton')
+    //ym(95445197,'reachGoal','shareButton')
 
     if (navigator.share) {
         navigator.share({
@@ -370,13 +460,18 @@ shareButton.addEventListener('click', function() {
         }, 2000);
     }
 });
-newGameButton.addEventListener('click', function(e) {
-   ym(95445197,'reachGoal','newgame')
+
+
+document.getElementById('newGameButton').addEventListener('click', function(e) {
     const newGameId = Date.now().toString();
-    const newLevelId = "0";  // Устанавливаем ID уровня на 0 для новой игры
+    const newLevelId = "0"; // Устанавливаем ID уровня на 0 для новой игры
     const newGameUrl = window.location.origin + window.location.pathname + '#/' + newGameId + '/' + newLevelId;
-    newGameButton.href = newGameUrl;
+
+    // Открываем новую игру в новой вкладке
+    window.open(newGameUrl, '_blank');
 });
+
+
 
 // З А Д А Н И Я
 // рисунок
@@ -410,17 +505,6 @@ function markLevelAsCompleted() {
 
 
 
-// Проверка завершенности рисунка
-let wasDrawingComplete = false;
-function isDrawingJustCompleted() {
-    const currentlyComplete = isDrawingComplete();
-    if (!wasDrawingComplete && currentlyComplete) {
-        wasDrawingComplete = true;
-        return true;
-    }
-    wasDrawingComplete = currentlyComplete;
-    return false;
-}
 
 //Конфетти у всех
 function notifyCompletionToOthers() {
@@ -430,6 +514,13 @@ function notifyCompletionToOthers() {
 
 //ЗАгружаем уровни
 
+function clearTaskPanel() {
+    const taskCoordinates = document.getElementById("taskCoordinates"); // Предполагаемый ID панели задач
+    // Очистка содержимого панели задач
+    taskCoordinates.innerHTML = ''; // Или любой другой способ очистки, который вы используете
+}
+
+
 
 console.log("Starting to load level");
 async function loadLevel(levelId) {
@@ -438,6 +529,9 @@ async function loadLevel(levelId) {
 
     // Очищаем текущую доску
     clearBoard();
+  clearTaskPanel(); // Очищаем панель задач перед загрузкой нового уровня
+  currentTask = { coordinates: [] }; // Сброс currentTask
+
 
     // Загружаем рисунок для текущего уровня
     loadDrawingForCurrentLevel();
@@ -448,6 +542,7 @@ async function loadLevel(levelId) {
         const levelData = snapshot.val();
         if (levelData && levelData.task) {
             currentTask = levelData.task;
+           shuffleArray(currentTask.coordinates);
             updateTaskPanel();   // <-- Обновляем панель заданий
             console.log('Загруженные данные уровня:', currentTask);
 
@@ -466,56 +561,12 @@ async function loadLevel(levelId) {
 console.log("Finished loading level");
 function updateTaskPanel() {
     drawingChanged = false;
-    displayCoordinates();
+  if (currentTask && currentTask.coordinates && currentTask.coordinates.length > 0) {
+      displayCoordinates();
+  }
 }
 
 
-async function setLevelHandlersAndLoadData() {
-    console.log(`[DEBUG] Setting handlers and loading data for level ${currentLevel}`);
-
-    // Отключаем предыдущие слушатели перед установкой новых
-    const cellsRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells`);
-    const drawingRef = database.ref(`games/${gameId}/levels/${currentLevel}/drawing`);
-
-    // Отключаем слушатели для cells
-    cellsRef.off();
-
-    // Отключаем слушатели для drawing
-
-    drawingRef.off('child_changed', handleCellUpdate);
-    drawingRef.off('child_added', handleCellUpdate);
-    drawingRef.off('child_removed');
-
-    // Устанавливаем новые слушатели для cells
-    cellsRef.on('value', snapshot => {
-      console.log(`[DEBUG] Raw Firebase update:`, snapshot.val());
-
-        console.log(`[DEBUG] Firebase update detected for level ${currentLevel}`);
-
-        const cellsState = snapshot.val();
-          if (cellsState && currentLevel === 2) {  // Добавьте эту проверку
-            allCells.forEach(cell => {
-                const index = cell.dataset.index;
-                if (cellsState[index]) {
-                    cell.classList.add('taken');
-                } else {
-                    cell.classList.remove('taken');
-                }
-            });
-        }
-    });
-
-    // Здесь вы можете установить другие слушатели для drawing, если это необходимо
-
-    // Загрузка рисунка для текущего уровня
-    await loadDrawingForCurrentGame(currentLevel);
-
-    // Обновляем отображение уровня
-    updateLevelDisplay();
-
-    // После того, как рисунок загружен, вызываем loadLevel
-    loadLevel(currentLevel);
-}
 
 console.log("Type of currentLevel:", typeof currentLevel);
 
@@ -526,24 +577,17 @@ console.log("Type of currentLevel:", typeof currentLevel);
 const prevLevelButton = document.getElementById('prevLevel');
 const nextLevelButton = document.getElementById('nextLevel');
 prevLevelButton.addEventListener('click', () => {
+    console.log(`[DEBUG] prevLevelButton clicked. Current level: ${currentLevel}`);
+    console.log(`[DEBUG] allLevels: ${allLevels.join(", ")}`);
+    let currentIndex = allLevels.indexOf(currentLevel);
+    console.log(`[DEBUG] currentIndex: ${currentIndex}`);
+    currentLevel = currentIndex > 0 ? allLevels[currentIndex - 1] : allLevels[allLevels.length - 1];
+    console.log(`[DEBUG] New current level: ${currentLevel}`);
 
-        ym(95445197, 'reachGoal', 'prevLevelClick');
-console.log(`[DEBUG] prevLevelButton clicked. Current level: ${currentLevel}`);
-
-    if (currentLevel > 0) {
-        currentLevel--;
-    } else {
-        // Если на первом уровне, переключаемся на последний уровень.
-        currentLevel = maxLevels - 1;
-    }
-  console.log(`[DEBUG] New current level: ${currentLevel}`);
-
-    setLevelHandlersAndLoadData();
-  setupFirebaseListeners();
-
-    // Обновляем URL
-    levelId = currentLevel.toString();
-    window.location.hash = "#/" + gameId + "/" + levelId;
+    loadLevel(currentLevel);
+    setupFirebaseListeners();
+    updateLevelDisplay();
+    window.location.hash = `#/${gameId}/${currentLevel}`;
 });
 
 window.addEventListener('hashchange', function() {
@@ -551,27 +595,34 @@ window.addEventListener('hashchange', function() {
 }, false);
 
 nextLevelButton.addEventListener('click', () => {
-        ym(95445197, 'reachGoal', 'nextLevelClick');
+    // Гарантируем, что все элементы в allLevels являются строками
+    let stringifiedLevels = allLevels.map(String);
 
-    console.log(`[DEBUG] nextLevelButton clicked. Current level: ${currentLevel}`);
+    // Текущий уровень также преобразуем в строку
+    let currentLevelStr = String(currentLevel);
+    let currentIndex = stringifiedLevels.indexOf(currentLevelStr);
 
-    if (currentLevel < maxLevels - 1) {
-        currentLevel++;
-    } else {
-        // Если на последнем уровне, переключаемся на первый уровень.
-        currentLevel = 0;
-    }
-  console.log(`[DEBUG] New current level: ${currentLevel}`);
+    console.log(`[DEBUG] nextLevelButton clicked. Текущий индекс: ${currentIndex}, Текущий уровень: ${currentLevelStr}`);
 
-    setLevelHandlersAndLoadData();
-  setupFirebaseListeners();
+    // Переключаемся на следующий уровень
+    currentIndex = (currentIndex + 1) % stringifiedLevels.length;
+    currentLevel = stringifiedLevels[currentIndex];
 
-    // Обновляем URL
-    levelId = currentLevel.toString();
-    window.location.hash = "#/" + gameId + "/" + levelId;
+    console.log(`[DEBUG] Новый текущий индекс: ${currentIndex}, Новый текущий уровень: ${currentLevel}`);
+    loadLevel(currentLevel);
+    setupFirebaseListeners();
+    updateLevelDisplay();
+    window.location.hash = `#/${gameId}/${currentLevel}`;
 });
 
 
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
 
 
 
@@ -584,21 +635,7 @@ function displayCoordinates() {
         taskCoordinates.appendChild(coordElement);
     });
     checkTaskCompletion();
-
-
 }
-function isDrawingComplete() {
-    if (!currentTask || !currentTask.coordinates) {
-        return false;
-    }
-    return currentTask.coordinates.every(coord => {
-        const [letter, number] = splitCoordinate(coord);
-        const cellIndex = getCellIndex(letter, number);
-        const cell = board.querySelector(`[data-index="${cellIndex}"]`);
-        return cell.classList.contains('taken');
-    });
-}
-
 
 
 copyCellsToGame(levelId);
@@ -724,104 +761,48 @@ const intervalId = setInterval(() => {
 
 
 // З У М И Л К А
-
-const zoomInButton = document.getElementById('zoomIn');
-const zoomOutButton = document.getElementById('zoomOut');
+const zoomToggle = document.getElementById('zoomToggle');
 const boardContainer = document.getElementById('board-container');
+const zoomIcon = document.getElementById('zoomIcon');
+let isZoomedIn = true;
 
+zoomToggle.addEventListener('click', function() {
+    if (!isZoomedIn) {
+        // Логика увеличения масштаба
+        board.classList.add('zoomed-in');
+        board.classList.remove('zoomed-out');
+        boardContainer.classList.add('zoomed-in');
+        boardContainer.classList.remove('zoomed-out');
+        document.documentElement.style.setProperty('--cell-size', window.innerWidth < 768 ? '8vw' : '2.5vw');
+        document.getElementById('board-container').style.height = board.scrollHeight + "px";
+        verticalCoordinates.style.display = 'grid';
+        horizontalCoordinates.style.display = 'grid';
 
+        // Обновление SVG для индикации "уменьшить масштаб"
+        zoomIcon.innerHTML = '<path fill-rule="evenodd" clip-rule="evenodd" d="M11 0V4V6H13H17V4H13V0H11ZM6 13V17H4L4 13L0 13V11H4H6L6 13Z" fill="black"/>';
 
-zoomInButton.addEventListener('click', function() {
-    board.classList.remove('zoomed-out');
-    boardContainer.classList.remove('zoomed-out');
-    board.classList.add('zoomed-in');
-    boardContainer.classList.add('zoomed-in');
-
-
-    if (window.innerWidth < 768) {
-        document.documentElement.style.setProperty('--cell-size', '8vw');
+        isZoomedIn = true;
     } else {
-        document.documentElement.style.setProperty('--cell-size', '2.5vw');
+        // Логика уменьшения масштаба
+        board.classList.remove('zoomed-in');
+        board.classList.add('zoomed-out');
+        boardContainer.classList.remove('zoomed-in');
+        boardContainer.classList.add('zoomed-out');
+        document.documentElement.style.setProperty('--cell-size', '0.67vw');
+        document.getElementById('board-container').style.height = 'auto';
+        verticalCoordinates.style.display = 'none';
+        horizontalCoordinates.style.display = 'none';
+
+        // Обновление SVG для индикации "увеличить масштаб"
+        zoomIcon.innerHTML = '<path fill-rule="evenodd" clip-rule="evenodd" d="M15 0H11V2L15 2L15 6L17 6V2V0H15ZM0 15V11H2L2 15L6 15L6 17H2L0 17V15Z" fill="black"/>';
+
+        isZoomedIn = false;
     }
-    document.getElementById('board-container').style.height = board.scrollHeight + "px";  // Устанавливаем высоту board-container равной высоте доски
-  verticalCoordinates.style.display = 'grid';
-  horizontalCoordinates.style.display = 'grid';
-
-    zoomInButton.disabled = true;
-    zoomOutButton.disabled = false;
-
 });
 
+//ZOOM НА ТЕЛЕФОНЕ
 
-zoomOutButton.addEventListener('click', function() {
-    board.classList.remove('zoomed-in');
-    boardContainer.classList.remove('zoomed-in');
-    board.classList.add('zoomed-out');
-    boardContainer.classList.add('zoomed-out');
-
-    document.documentElement.style.setProperty('--cell-size', '0.67vw');  
-    document.getElementById('board-container').style.height = 'auto';  // Позволяем контейнеру board-container автоматически определять свою высоту
-  verticalCoordinates.style.display = 'none';
-  horizontalCoordinates.style.display = 'none';
-
-    zoomOutButton.disabled = true;
-    zoomInButton.disabled = false;
-
-});
-
-
-
-
-// S H A D O W   S C R O L L
-// Функция для проверки положения скролла и управления тенями
-function handleScroll() {
-    const taskCoordinates = document.getElementById("taskCoordinates");
-    const shadowContainer = taskCoordinates.parentElement;
-    // Проверяем, требуется ли прокрутка
-    if (taskCoordinates.scrollWidth <= taskCoordinates.clientWidth) {
-        shadowContainer.classList.add("no-left-shadow");
-        shadowContainer.classList.add("no-right-shadow");
-        return;  // Выходим из функции, так как прокрутка не требуется
-    }
-
-    if (taskCoordinates.scrollLeft === 0) {
-        shadowContainer.classList.add("no-left-shadow");
-    } else {
-        shadowContainer.classList.remove("no-left-shadow");
-    }
-
-    if (taskCoordinates.scrollLeft + taskCoordinates.clientWidth >= taskCoordinates.scrollWidth) {
-        shadowContainer.classList.add("no-right-shadow");
-    } else {
-        shadowContainer.classList.remove("no-right-shadow");
-    }
-}
-
-document.addEventListener("DOMContentLoaded", function() {
-    const taskCoordinates = document.getElementById("taskCoordinates");
-    const shadowContainer = taskCoordinates.parentElement; // Получаем родительский элемент (.shadow-container)
-
-    // Начало добавленного кода
-    const observer = new MutationObserver(function(mutationsList, observer) {
-        for(let mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                handleScroll();
-            }
-        }
-    });
-
-    observer.observe(taskCoordinates, { childList: true });
-    // Конец добавленного кода
-
-    // Инициализируем тени при загрузке страницы
-    handleScroll();
-
-    // Добавляем слушатель событий на прокрутку
-    taskCoordinates.addEventListener("scroll", handleScroll);
-
-    // Добавляем задержку для повторной проверки положения скролла
-    setTimeout(handleScroll, 1000);  // проверка через 1 секунду
-});
+//конец зума на телеоне
 
 
 
@@ -874,127 +855,337 @@ async function copyCellsToGame(levelId) {
     }
 }
 
-// Переменная для отслеживания состояния бота
-let isBotActive = false;
 
-// Функция для переключения состояния бота
+ //   B B B B B B B O O O O O O O O O O T T T T T T T T T T
+let botEnabled = false;
+let botTimer = null;
+
+
+
 function toggleBot() {
-    isBotActive = !isBotActive;
-    const botToggleButton = document.getElementById('botToggle');
-    botToggleButton.textContent = isBotActive ? '🤖 ON' : '🤖 OFF';
+  botEnabled = !botEnabled;
+
+  const botIconActive = document.getElementById('botIconActive');
+  const botIconInactive = document.getElementById('botIconInactive');
+
+  if (botEnabled) {
+      botIconActive.style.display = 'block';
+      botIconInactive.style.display = 'none';
+  } else {
+      botIconActive.style.display = 'none';
+      botIconInactive.style.display = 'block';
+  }
+
+  console.log(`Бот ${botEnabled ? 'включен' : 'выключен'}.`);
 }
 
-// Обработчик для кнопки переключения бота
 document.getElementById('botToggle').addEventListener('click', toggleBot);
 
 
+// Вспомогательная функция для выбора нового направления
 
-// Функция для получения индекса из объекта клетки
-function getCellIndexFromCell(cell) {
-    // Возможно, вам нужно будет адаптировать эту функцию под вашу логику получения индекса
-    return cell.dataset.index;
-}
-function indexToCoords(index) {
-    const x = index % cellsCount; // Получаем координату X, используя остаток от деления
-    const y = Math.floor(index / cellsCount); // Получаем координату Y, используя целочисленное деление
-    return {x, y};
+
+// Функция для определения следующего направления поворота по часовой стрелке
+function getNextClockwiseDirection(direction) {
+    const directions = ['up', 'right', 'down', 'left'];
+    let index = directions.indexOf(direction);
+    return directions[(index + 1) % directions.length];
 }
 
-// Функция для выбора случайной клетки ботом
-function botMakeMove(lastClickedCellIndex) {
-    // Преобразуем индекс в координаты
-    const lastClickedCellCoords = indexToCoords(lastClickedCellIndex);
+// Функция для определения следующего направления поворота против часовой стрелки
+function getNextCounterClockwiseDirection(direction) {
+    const directions = ['up', 'left', 'down', 'right'];
+    let index = directions.indexOf(direction);
+    return directions[(index + 1) % directions.length];
+}
 
-    // Выбираем случайный индекс клетки
-    let botCellIndex;
-    let attempts = 0;
-    do {
-        botCellIndex = getRandomCellIndex(lastClickedCellCoords);
-        attempts++;
-        // Предотвратим потенциальный бесконечный цикл
-        if (attempts > 100) {
-            console.error("Can't find a valid move for the bot.");
-            return;
-        }
-    } while (removedCells.includes(botCellIndex));
-
-    // Имитируем клик по клетке
-    const botCell = board.querySelector(`[data-index="${botCellIndex}"]`);
-    if (botCell && !botCell.classList.contains('taken')) {
-        handleCellClick(botCell, true); // Передаем true, чтобы указать, что это ход бота
+function makeSingleBotMove(clicksLeft, currentRow, currentColumn, direction, rotateClockwise) {
+    if (clicksLeft <= 0) {
+        console.log('Бот завершил ходы');
+        return;
     }
-}
 
+    let nextRow = currentRow;
+    let nextColumn = currentColumn;
 
-
-function getRandomCellIndex(coords) {
-  // Переменные для координат и индекса клетки бота
-  let botCellIndex;
-  let botCell;
-
-  // Проверяем, достаточно ли ходов сделал игрок для определения направления
-  if (playerMoves.length >= 2) {
-    // Получаем координаты двух последних ходов
-    const [secondLastMove, lastMove] = playerMoves.slice(-2).map(indexToCoords);
-    // Вычисляем направление между последними двумя ходами
-    const direction = {
-      x: lastMove.x - secondLastMove.x,
-      y: lastMove.y - secondLastMove.y
-    };
-
-    // Нормализуем направление (делаем шаг равным 1 клетке)
-    if (direction.x !== 0) direction.x /= Math.abs(direction.x);
-    if (direction.y !== 0) direction.y /= Math.abs(direction.y);
-
-    // Пытаемся сделать ход в том же направлении
-    let nextX = lastMove.x + direction.x;
-    let nextY = lastMove.y + direction.y;
-
-    // Проверяем, что следующая клетка в пределах поля и свободна
-    if (isCellFreeAndValid(nextX, nextY)) {
-      botCellIndex = nextY * cellsCount + nextX;
-      return botCellIndex;
+    // Проверяем, можно ли продолжить движение в текущем направлении
+    if (isDirectionValid(currentRow, currentColumn, direction, cellsCount, allCells)) {
+        nextRow += direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
+        nextColumn += direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
     } else {
-      // Если клетка занята или за пределами поля, пытаемся сделать ход по горизонтали или вертикали
-      nextX = lastMove.x + (direction.x === 0 ? 1 : 0);
-      nextY = lastMove.y + (direction.y === 0 ? 1 : 0);
-      if (isCellFreeAndValid(nextX, nextY)) {
-        botCellIndex = nextY * cellsCount + nextX;
-        return botCellIndex;
-      }
+        // Выбираем новое направление, если текущее заблокировано
+        direction = rotateClockwise ? getNextClockwiseDirection(direction) : getNextCounterClockwiseDirection(direction);
     }
-  }
 
-  // Если направление не определено или не удалось продолжить линию, делаем случайный ход вблизи последнего хода игрока
-do {
-        const dx = Math.floor(Math.random() * (maxDistance - minDistance + 1)) + minDistance;
-        const dy = Math.floor(Math.random() * (maxDistance - minDistance + 1)) + minDistance;
+    // Случайно решаем, поворачивать ли боту на этом ходу
+    if (Math.random() < 0.4) { // 30% шанс поворота на каждом ходу
+        direction = rotateClockwise ? getNextClockwiseDirection(direction) : getNextCounterClockwiseDirection(direction);
+    }
 
-        let randomX = coords.x + dx;
-        let randomY = coords.y + dy;
+    // Выполняем ход
+    let nextCellIndex = nextRow * cellsCount + nextColumn;
+    let cellToTake = allCells[nextCellIndex];
+    if (!cellToTake.classList.contains('taken') && nextRow >= 0 && nextRow < cellsCount && nextColumn >= 0 && nextColumn < cellsCount) {
+        cellToTake.classList.add('taken');
+        cellToTake.dataset.owner = 'bot';
+        const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${nextCellIndex}`);
+        cellRef.set(true);
+        console.log('Бот сделал ход в клетку:', nextCellIndex);
+    } else {
+        console.log('Клетка занята или за пределами доски, бот пропускает ход.');
+    }
 
-        botCellIndex = randomY * cellsCount + randomX;
-
-        // Проверяем, что клетка свободна, не удалена и находится в пределах поля
-        botCell = board.querySelector(`[data-index="${botCellIndex}"]`);
-    } while (
-        randomX < 0 || randomY < 0 ||
-        randomX >= cellsCount || randomY >= cellsCount ||
-        !botCell || botCell.classList.contains('taken') ||
-        removedCells.includes(botCellIndex)
-    );
-
-    return botCellIndex;
+    // Планируем следующий ход
+    setTimeout(() => {
+        makeSingleBotMove(clicksLeft - 1, nextRow, nextColumn, direction, rotateClockwise);
+    }, 100);
 }
 
-// Вспомогательная функция для проверки, свободна ли клетка и находится ли она в пределах поля
-function isCellFreeAndValid(x, y) {
-  if (x < 0 || y < 0 || x >= cellsCount || y >= cellsCount) {
+// Здесь мы запускаем движение бота, предварительно выбрав, будет ли он поворачивать по часовой стрелке или нет
+function botMove(botClickCount, lastUserClickIndex) {
+    let rotateClockwise = Math.random() < 0.9; // 50% шанс поворачивать по часовой стрелке
+
+    // Начальные координаты для бота - последняя клетка, кликнутая пользователем
+    let initialRow = Math.floor(lastUserClickIndex / cellsCount);
+    let initialColumn = lastUserClickIndex % cellsCount;
+    let currentDirection = chooseRandomDirection();
+
+    makeSingleBotMove(botClickCount, initialRow, initialColumn, currentDirection, rotateClockwise);
+}
+// Случайно выбираем начальное направление
+function chooseRandomDirection() {
+    const directions = ['up', 'down', 'left', 'right'];
+    let randomIndex = Math.floor(Math.random() * directions.length);
+    return directions[randomIndex];
+}
+
+// Вспомогательная функция для случайного выбора направления
+
+
+function isDirectionValid(row, column, direction, cellsCount, allCells) {
+  // Убедимся, что direction — это допустимое направление
+    if (!['up', 'down', 'left', 'right'].includes(direction)) {
+        console.error('Недопустимое направление:', direction);
+        return false;
+    }
+
+    // Проверьте, что row и column — это числа
+    if (typeof row !== 'number' || typeof column !== 'number') {
+        console.error('row или column не являются числами');
+        return false;
+    }
+
+    // Убедимся, что cellsCount — это число
+    if (typeof cellsCount !== 'number') {
+        console.error('cellsCount не является числом');
+        return false;
+    }
+    // Получаем следующую позицию в зависимости от направления
+    let dRow = (direction === 'up') ? -1 : (direction === 'down') ? 1 : 0;
+    let dColumn = (direction === 'left') ? -1 : (direction === 'right') ? 1 : 0;
+    let nextRow = row + dRow;
+    let nextColumn = column + dColumn;
+
+    // Проверяем, не выходит ли следующая клетка за пределы доски
+    if (nextRow < 0 || nextRow >= cellsCount || nextColumn < 0 || nextColumn >= cellsCount) {
+        return false;
+    }
+
+    // Индекс следующей клетки на доске
+    let nextIndex = nextRow * cellsCount + nextColumn;
+
+    // Проверяем, не занята ли следующая клетка
+    if (allCells[nextIndex].classList.contains('taken')) {
+        return false;
+    }
+
+    // Дополнительная проверка, чтобы избежать создания квадрата из четырёх клеток
+    if (willCreateSquare(nextRow, nextColumn, cellsCount, allCells)) {
+        return false;
+    }
+
+    return true; // Направление валидно для хода
+}
+
+function willCreateSquare(row, column, cellsCount, allCells) {
+    const directions = [
+        { dRow: -1, dColumn: 0 },  // Проверка вверх
+        { dRow: 1, dColumn: 0 },   // Проверка вниз
+        { dRow: 0, dColumn: -1 },  // Проверка влево
+        { dRow: 0, dColumn: 1 }    // Проверка вправо
+    ];
+
+    let takenCount = 0;
+
+    // Проверяем клетки по всем четырём направлениям от текущей
+    for (let i = 0; i < directions.length; i++) {
+        let newRow = row + directions[i].dRow;
+        let newColumn = column + directions[i].dColumn;
+        let newIdx = newRow * cellsCount + newColumn;
+
+        if (newRow >= 0 && newRow < cellsCount && newColumn >= 0 && newColumn < cellsCount && allCells[newIdx].classList.contains('taken')) {
+            takenCount++;
+        }
+
+        if (takenCount > 1) {  // Если нашли более одной занятой клетки вокруг, есть риск создания квадрата
+            return true;
+        }
+    }
+
     return false;
-  }
-  const cellIndex = y * cellsCount + x;
-  const cell = board.querySelector(`[data-index="${cellIndex}"]`);
-  return cell && !cell.classList.contains('taken');
 }
 
+
+// Изменяем функцию makeBotMove, чтобы она принимала направление движения как параметр
+
+
+// Функция для получения индекса последней кликнутой пользователем клетки
+
+
+document.getElementById('newBoardButton').addEventListener('click', createNewUserLevel);
+
+
+
+function createNewUserLevel() {
+    // Генерируем случайную строку из трех букв
+    const randomString = Array(3).fill(null).map(() => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('') + 'un';
+
+    // Генерируем уникальный идентификатор уровня
+    const newUserLevelId = randomString + '(' + new Date().toISOString().slice(0, 10) + ')';
+
+    const newLevelData = {}; // Пустой объект для нового уровня
+    const path = `games/${gameId}/levels/${newUserLevelId}`;
+
+    console.log("Попытка создать новый уровень. Path:", path); // Логирование перед запросом
+
+    database.ref(path).set(newLevelData).then(() => {
+        console.log("Уровень успешно создан:", newUserLevelId, "Path:", path);
+
+        allLevels.push(newUserLevelId); // Добавляем новый уровень в общий список
+        currentLevel = newUserLevelId; // Обновляем только текущий уровень
+
+        loadLevel(currentLevel); // Загружаем новый уровень
+        setupFirebaseListeners();
+        updateLevelDisplay(); // Обновляем отображение уровня
+
+        // Важно: обновляем хэш URL для отражения нового уровня
+        window.location.hash = `#/${gameId}/${newUserLevelId}`;
+    }).catch(error => {
+        console.error("Ошибка создания нового уровня:", error);
+    });
+}
+
+// B B B B  O  O O O O T T T T E E E E N N N D D D D D D 
+
+function loadAllLevels() {
+    // Загружаем стандартные уровни
+    database.ref('levels').once('value').then(snapshot => {
+        const levelsData = snapshot.val();
+        let standardLevels = levelsData ? Object.keys(levelsData).map(String) : [];
+
+        // Загружаем пользовательские уровни
+        return database.ref(`games/${gameId}/levels`).once('value').then(snapshot => {
+            const gameLevelsData = snapshot.val();
+            let gameLevels = gameLevelsData ? Object.keys(gameLevelsData) : [];
+
+            // Объединяем списки, удаляем дубликаты
+            allLevels = [...new Set([...standardLevels, ...gameLevels])];
+            console.log("Загружены уровни:", allLevels);
+        });
+    }).catch(error => {
+        console.error("Ошибка при загрузке уровней:", error);
+    });
+}
+
+
+
+// D R A W 
+let isDrawing = false;
+let lastCell = null; // Для отслеживания последней активированной клетки
+
+function initializeDrawingHandlers() {
+    const board = document.getElementById('board');
+    board.addEventListener('mousedown', () => { isDrawing = true; });
+    board.addEventListener('mousemove', handleMouseMove);
+    board.addEventListener('mouseup', handleMouseUp);
+    board.addEventListener('mouseleave', () => { isDrawing = false; });
+}
+
+function handleMouseMove(event) {
+    if (isDrawing && event.target.classList.contains('cell')) {
+        if (event.target !== lastCell) {
+            lastCell = event.target;
+            toggleCellState(event.target); // Меняем состояние клетки при движении
+        }
+    }
+}
+
+function handleMouseUp(event) {
+    if (event.target.classList.contains('cell') && event.target === lastCell) {
+        toggleCellState(event.target); // Меняем состояние клетки при клике
+    }
+    isDrawing = false;
+    lastCell = null;
+}
+
+function toggleCellState(cell) {
+    const index = cell.dataset.index;
+    const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
+
+    cellRef.once('value').then((snapshot) => {
+        const isTaken = snapshot.val();
+        if (isTaken) {
+            cell.classList.remove('taken');
+            cellRef.remove();
+        } else {
+            cell.classList.add('taken');
+            cellRef.set(true);
+        }
+    });
+}
+
+initializeDrawingHandlers();
+
+// z o o 
+const zoomableDiv = document.getElementById('zoomableDiv');
+let scale = 1;
+let initialDistance;
+
+function getDistance(touch1, touch2) {
+    const dx = touch1.pageX - touch2.pageX;
+    const dy = touch1.pageY - touch2.pageY;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+zoomableDiv.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        initialDistance = getDistance(e.touches[0], e.touches[1]);
+    }
+});
+
+zoomableDiv.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        const currentDistance = getDistance(e.touches[0], e.touches[1]);
+        if (initialDistance) {
+            scale = (currentDistance / initialDistance) * scale;
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            const newWidth = screenWidth / scale; // Новая ширина элемента
+            const newHeight = screenHeight / scale; // Новая высота элемента
+
+            zoomableDiv.style.transform = `scale(${scale})`;
+            zoomableDiv.style.width = `${newWidth}px`; // Обновление ширины элемента
+            zoomableDiv.style.height = `${newHeight}px`; // Обновление высоты элемента
+            initialDistance = currentDistance; // Обновляем начальное расстояние для следующего жеста
+        }
+    }
+});
+
+zoomableDiv.addEventListener('touchend', () => {
+    if (e.touches.length < 2) {
+        scale = parseFloat(zoomableDiv.style.transform.replace('scale(', '').replace(')', '')) || 1;
+    }
+});
 
