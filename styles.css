@@ -3,17 +3,45 @@
     margin: 0;
     padding: 0;
     /*box-sizing: border-box; */
-    font-family: "Roboto Mono", monospace, "PT Mono", "Courier New", "Courier", "Helvetica Neue", Arial;
+    font-family: 'JetBrains Mono', "Roboto Mono", monospace, "PT Mono", "Courier New", "Courier", "Helvetica Neue", Arial;
 }
-
 :root {
     --cell-size: 2.5vw;
 }
 
+#newGameButton {
+  max-height: 30px;
+  margin-right: 12px;
+}
+
+.logo {
+  border-radius: 2px;
+  cursor: pointer;
+  padding: auto;
+}
+
+#newGameButton:hover path {
+  fill: #aa3908; /* Измените цвет на желаемый */
+}
+
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/JetBrainsMono-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  src: url('/fonts/JetBrainsMono-Medium.ttf') format('truetype');
+}
 
 
 button, a {
-    font-family: "Roboto Mono", monospace, "PT Mono", "Courier New", "Courier", "Helvetica Neue", Arial;
+    font-family: 'JetBrains Mono', "Roboto Mono", monospace, "PT Mono", "Courier New", "Courier", "Helvetica Neue", Arial;
 }
 
 body, html {
@@ -44,6 +72,7 @@ body, html {
     height: var(--cell-size);
    /* border: 1px solid #cfcfcf; */
   background-color: #ffffff;
+  
 
 }
 
@@ -60,11 +89,11 @@ body, html {
 #taskPanel.hidden {
     display: none;
 }
- 
+
 
 /* Стили координат */
 .highlighted-coordinate {
-    font-weight: bold;
+    font-weight: 800;
     color: black;
 }
 
@@ -75,6 +104,7 @@ body, html {
     width: var(--cell-size);
     display: flex;
   text-align: center; 
+  font-weight: 400;
 }
 
 .cell, #vertical-coordinates > div {
@@ -111,13 +141,13 @@ body, html {
 
 
 
-#taskCoordinates div {
+ /* #taskCoordinates div {
     margin-left: 4px; 
     margin-right: 4px;
-   /* display: inline-block;  /* элементы будут горизонтальными */
+display: inline-block;  /* элементы будут горизонтальными 
 
 
-}
+}*/
 
 
 
@@ -142,22 +172,12 @@ body, html {
 
 .mainbuttons {
     display: flex;
-    justify-content: flex-end;
-    align-items: center;
+    align-items: center; /* This will vertically align the items to the center, making them appear at the same height */
+    justify-content: flex-end; /* This aligns your items to the end of the main axis */
 }
 
 
-.custom-button {
-    background-color: #efeeef;
-    color: black;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 25px;
-    margin: 0 10px;
-    cursor: pointer;
-    transition: transform 0.2s;
-    font-size: 18px;
-}
+
 
 .custom-button:hover, .custom-button2:hover {
     transform: translateY(-1px);
@@ -172,8 +192,9 @@ body, html {
 /* Дополнительные стили контейнеров */
 .outer-container {
     overflow-y: auto;
-    height: 100vh;
     font-size: 12px;
+      height: calc(100vh - 60px);
+
 
   }
 
@@ -203,7 +224,7 @@ body, html {
     align-items: flex-start;
     min-height: calc(150 * var(--cell-size) + var(--cell-size) + 1vw);
   padding-top: 12px;
-  color: #999077;
+  color: #cdc9c6;
 }
 
 /* Медиа-запрос для мобильных устройств */
@@ -212,10 +233,15 @@ body, html {
   :root {
       --cell-size: 8vw;
   }
+
+  .outer-container {
+      height: calc(100vh - 60px);
+  }
+  
   #taskCoordinates div {
   margin-left: 2px;
   margin-right: 2px;
-    font-size: 14px;
+
   }
 
     #vertical-coordinates, #horizontal-coordinates {
@@ -265,23 +291,54 @@ body, html {
 
 
 
+.custom-button2 svg {
+    height: 100%; /* Высота SVG будет растягиваться на всю высоту кнопки */
+    width: auto; /* Ширина SVG будет масштабироваться пропорционально высоте */
+}
 
 
+.custom-button {
+    background-color: #efeeef;
+    color: black;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    margin: 0 10px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
+#newBoardButton{
+  margin-left:10px;
+}
 .custom-button2 {
-display: inline-flex;
 padding: 8px 12px;
 align-items: flex-start;
 gap: 10px;
-  background-color: #efeeef;
-  color: #000000;
+  background-color: #dad8da61;
+  color: #000000a3;
   border: none;
-  border-radius: 20px;
+  border-radius: 8px;
   cursor: pointer;
   transition: transform 0.2s;
   font-size: 18px;
+ display: flex;
+    align-items: center;
+    justify-content: center;
+  margin-right: 8px;
+  
+  /*height:40px */
 }
 
+.nextprev, .mainbuttons {
+  display: flex; /* Establishes a flex container */
+  align-items: stretch; /* Stretch the children to fit the container's height */
+  /* Other styles */
+}
 
 
 .highlighted {
@@ -298,14 +355,14 @@ gap: 10px;
 
 .bhighlighted {
   display: inline-flex;
-  height: 28px;
   padding: 4px;
   justify-content: center;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
   border-radius: 2px;
-  /* background: #EAE2E2;*/
+  border: 1px solid grey;
+  margin-left: 10px;
 }
 
 
@@ -398,47 +455,92 @@ gap: 10px;
 
 
 
-#taskCoordinates {
-  position: relative; /* Для абсолютного позиционирования дочерних элементов */
-    width: 100%;
-    height: 100%;
-  position: relative;
-      flex-grow: 1;
-      overflow-x: overlay;
-    overflow-x: auto; 
-    width: 100%;  
-    white-space: nowrap;
 
-}.shadow-container {
-    position: relative;
-    overflow: hidden; /* Это скроет псевдо-элементы, выходящие за пределы контейнера */
-  display: inline-grid;
+@keyframes flashAnimation {
+  0%, 100% { background-color: #333333; }
+  50% { background-color: #db3700; }
+
 }
 
-.shadow-container::before,
-.shadow-container::after {
-    content: "";
+.red-flash {
+  animation: flashAnimation 2s;
+
+}
+
+
+.centralcontent {
+    display: flex; /* Активируем Flexbox */
+    align-items: center; /* Выравниваем элементы по вертикали */
+    justify-content: flex-start; /* Выравниваем элементы по горизонтали от начала */
+    flex-wrap: wrap; /* Разрешаем элементам переноситься на новую строку */
+
+}
+
+.centralcontent span{
+  color:grey;
+}
+
+  #taskCoordinates {
+      display: flex; /* Если внутри #taskCoordinates также должны быть элементы в строку */
+      align-items: center; /* Выравнивание элементов внутри #taskCoordinates */
+  }
+
+:root {
+
+    transition: --cell-size 0.5s ease; /* переход для размера клетки */
+}
+
+
+
+#board {
+    transition: grid-gap 0.3s ease;
+}
+
+.sign{
+  padding: 11px;
+  font-size: 10px;
+}
+
+#coordinateDisplay {
     position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 20px;
-    z-index: 10;
-}
-
-.shadow-container::before {
-    left: 0;
-    background: linear-gradient(to right, rgba(0,0,0,0.2), rgba(0,0,0,0));
-}
-
-.shadow-container::after {
-    right: 0;
-    background: linear-gradient(to left, rgba(0,0,0,0.2), rgba(0,0,0,0));
-}
-
-.shadow-container.no-left-shadow::before {
-    width: 0;
-}
-
-.shadow-container.no-right-shadow::after {
     display: none;
+    z-index: 1200; /* Убедитесь, что элемент находится над другими элементами */
+    background-color: #ffffff7d; /* Цвет фона */
+    border: 0px solid #6b6a66; /* Граница вокруг элемента */
+    padding: 5px; /* Отступы внутри элемента */
+    font-size: 14px; /* Размер шрифта */
+    pointer-events: none; /* Убедитесь, что элемент не мешает взаимодействию с клетками */
+  border-radius:3px;
+  color: #404040;
+
+}
+
+.highlight-next-level {
+    background-color: #b1d26a; /* Зеленый цвет фона для подсветки */
+  color:green;
+    transition: background-color 0.5s ease; /* Плавное изменение фона */
+}
+
+#nextLevel {
+    transition: background-color 0.5s ease; /* Плавный переход для обычного состояния кнопки */
+}
+
+
+#targetIndicator {
+    position: fixed; /* Используем fixed для фиксации прицела */
+    left: 50%; /* Центрируем по горизонтали */
+    top: 50%; /* Центрируем по вертикали */
+    transform: translateY(50%); /* Смещаем прицел, чтобы его центр был в центре экрана */
+    /* Остальные стили остаются прежними */
+}
+
+.highlighted-cell {
+  /*background-color: #c7c7c7;  Цвет подсветки */
+    transition: background-color 0.1s; /* Плавное изменение цвета */
+  border:1px dashed gray;
+}
+
+
+.outer-container {
+    transform-origin: 0% 0%;
 }
