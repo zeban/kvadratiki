@@ -1202,7 +1202,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (localStorage.getItem("tooltipShown") !== "true") {
         var tooltip = document.createElement("div");
         tooltip.classList.add("tooltip-text");
-        tooltip.innerHTML = "Раcкрашивайте клетки по координатам или рисуйте, что хотите. <br><button class='close-btn'>П О Г Н А Л И</button>";
+        tooltip.innerHTML = "Раcкрашивайте клетки по координатам или рисуйте, что хотите. <br><button class='close-btn'>ОК</button>";
         document.body.appendChild(tooltip);
 
         var closeButton = tooltip.querySelector(".close-btn");
