@@ -225,6 +225,8 @@ let hasFlashed = false; // Флаг для отслеживания первог
 let userClicks = []; // Теперь это массив для хранения индексов
 
 async function handleCellClick(cell) {
+      ym(95445197, 'reachGoal', 'cellClick');
+
     const index = cell.dataset.index;
     const cellRef = database.ref(`games/${gameId}/levels/${currentLevel}/cells/${index}`);
 
