@@ -544,3 +544,29 @@ gap: 10px;
 .outer-container {
     transform-origin: 0% 0%;
 }
+
+/* Стили для тултипа */
+.tooltip-text {
+    display: none;
+    position: fixed;
+    right: 10px; /* Отступ справа */
+    top: 10px; /* Отступ сверху */
+    background-color: black;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 1000;
+    width: 200px; /* Ширина тултипа */
+}
+
+/* Стили для кнопки закрытия */
+.close-btn {
+    background-color: #f44336;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
