@@ -4,7 +4,7 @@ let currentUserLevel = 0; // Default starting level, can be changed based on use
 
 // === Настройки Firebase ===
 const firebaseConfig = {
-    apiKey: "AIzaSyBRFHQZYMG6QSA1gyw8lHw0gIhVajpvgjU", 
+    apiKey: "FIREBASE_API_KEY", 
     authDomain: "kletkun.firebaseapp.com",
     databaseURL: "https://kletkun-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "kletkun",
@@ -436,7 +436,7 @@ database.ref(`games/${gameId}/levels/${currentLevel}/drawing`).on('child_removed
 // Обработка кнопок "Поделиться" и "Новая игра"
 const shareButton = document.getElementById('shareButton');
 shareButton.addEventListener('click', function() {
-    //ym(95445197,'reachGoal','shareButton')
+    ym(95445197,'reachGoal','shareButton')
 
     if (navigator.share) {
         navigator.share({
