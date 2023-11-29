@@ -3,7 +3,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+
 
 
     <title>Квадратики</title>
@@ -39,7 +41,7 @@
 </head>
 <body>
 
-<!-- Yandex.Metrika counter -->
+<!-- Yandex.Metrika counter 
 <script type="text/javascript" >
    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
    m[i].l=1*new Date();
@@ -60,37 +62,69 @@
       <!-- Кнопки -->
 
   <div id="menuContainer">
+
     <div class="navigation-container">
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="33" viewBox="0 0 210 270" fill="none"  id="newGameButton" class="logo" target="blank">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M60 0H30V30H60V60V90V120V150V180H30V150H0V180H30V210H60V240V270H90H120V240H90V210H120H150V240V270H180H210V240H180V210H210H240V180H210H180H150H120V150H150H180H210H240V120H210V90V60V30H180V0H150V30H180V60H150H120H90V30H60V0ZM180 120V90H150V120H180ZM120 90V120H90V90H120Z" fill="black"/>
+
+
+      </svg>
+    
       <div class="nextprev">
-          <button id="prevLevel" class="custom-button2">←</button>
-            <span>Уровень</span>  <span id="levelNumber"> ⛄︎ </span>
+          <button id="prevLevel" class="custom-button2">←</button>       
           <button id="nextLevel" class="custom-button2">→</button>
+      <button id="newBoardButton" class="custom-button2">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M18 10C18 14.4183 14.4183 18 10 18C5.58172 18 2 14.4183 2 10C2 5.58172 5.58172 2 10 2C14.4183 2 18 5.58172 18 10ZM20 10C20 15.5228 15.5228 20 10 20C4.47715 20 0 15.5228 0 10C0 4.47715 4.47715 0 10 0C15.5228 0 20 4.47715 20 10ZM10 5C10.5523 5 11 5.44772 11 6V9H14C14.5523 9 15 9.44772 15 10C15 10.5523 14.5523 11 14 11H11V14C11 14.5523 10.5523 15 10 15C9.44771 15 9 14.5523 9 14V11H6C5.44772 11 5 10.5523 5 10C5 9.44772 5.44772 9 6 9H9V6C9 5.44772 9.44772 5 10 5Z" fill="black"/>
+
+    </svg>
+</button>
+
+
+       
       </div>
+    </div> 
+    
+    <div id="centralcontent" class="centralcontent">
+      <!--<span>LEVEL-</span>   <span id="levelNumber"> ⛄︎ </span> <span> </span>-->
+    
+      <div id="taskCoordinates">
+      </div>
+    
 
-    <div class="shadow-container">
-      <div id="taskCoordinates" class="scrollable-content">
-      <div class="shadow-left"></div>
-      <div class="shadow-right"></div></div>
-  </div>
-    </div>
-      <div class="mainbuttons">
+    </div>  
+    <div class="mainbuttons">
+      <button id="zoomToggle" class="custom-button2">
+          <svg id="zoomIcon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 17 17" fill="none">
 
-        <button id="botToggle" class="custom-button">🤖 OFF</button>
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M11 0V4V6H13H17V4H13V0H11ZM6 13V17H4L4 13L0 13V11H4H6L6 13Z" fill="black"/>
 
-          <button id="shareButton" class="custom-button">Играть с друзьями</button>
-          <a id="newGameButton" class="custom-button" target="_blank">Новая игра</a>
+
+          </svg>
+      </button>
+      <button id="botToggle" class="custom-button2">
+          <img id="botIconActive" class="bot-icon" style="display: none;" src="/icons/active.svg" alt="Active Bot Icon">
+          <img id="botIconInactive" class="bot-icon" src="/icons/nonactive.svg" alt="Inactive Bot Icon">
+      </button>
+
+          <button id="shareButton" class="custom-button2">Рисовать с друзьями</button>
+       <!--<a id="newGameButton" class="custom-button" target="_blank"></a> -->
       </div>
   </div>
-
-  <div class="zoom-buttons">
-      <button id="zoomIn" class="custom-button" disabled>＋</button>
-      <button id="zoomOut" class="custom-button">-</button>
   </div>
+  
 
+
+
+  <div id="coordinateDisplay"></div>
+  <div id="targetIndicator"></div> <!-- Элемент для прицела -->
 
 
   <!-- Основной контейнер для доски -->
-  <div class="outer-container">
+  
+  <div class="outer-container" id="zoomableDiv">
       <div id="board-container">
           <div id="horizontal-coordinates"></div>
           <div class="board-wrapper">
@@ -98,12 +132,13 @@
               <div id="board"></div>
 
           </div>
-        <span class="sign"> Yura Bruskov </span>
+        <span class="sign"> ©️ 2023 @yurabruskov  <a href="https://t.me/kvadratikionline">t.me/kvadratikionline </a> </span>
 
       </div>
 
   </div>
 
+ 
 
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.0/dist/confetti.browser.min.js"></script>
