@@ -6,7 +6,7 @@
     font-family: 'JetBrains Mono', "Roboto Mono", monospace, "PT Mono", "Courier New", "Courier", "Helvetica Neue", Arial;
 }
 :root {
-    --cell-size: 2.5vw;
+    --cell-size: 1.5vw;
 }
 
 #newGameButton {
